@@ -37,18 +37,22 @@ jobs:
           tools: composer
 
       - name: Copiar .env.example a .env
-        run: php -r "file_exists('Blitzvideo-api/.env') || copy('Blitzvideo-api/.env.example', 'Blitzvideo-api/.env');"
+        run: |
+          if [ -f ".env.example" ]; then
+            cp .env.example .env
+          else
+            echo "El archivo .env.example no encontrado en el directorio raíz"
+            exit 1
+          fi
 
       - name: Mostrar contenido de .env
-        run: cat Blitzvideo-api/.env
+        run: cat .env
 
       - name: Instalar dependencias
         run: composer install --prefer-dist --no-progress --no-suggest
-        working-directory: Blitzvideo-api
 
       - name: Generar clave de aplicación
         run: php artisan key:generate
-        working-directory: Blitzvideo-api
 
       - name: Imprimir variables de entorno de la base de datos
         run: |
@@ -59,7 +63,6 @@ jobs:
           echo "DB_DATABASE: $DB_DATABASE"
           echo "DB_USERNAME: $DB_USERNAME"
           echo "DB_PASSWORD: $DB_PASSWORD"
-        working-directory: Blitzvideo-api
 
       - name: Esperar a que MySQL esté listo
         run: |
@@ -72,12 +75,9 @@ jobs:
 
       - name: Ejecutar migraciones de la base de datos
         run: php artisan migrate --force
-        working-directory: Blitzvideo-api
 
       - name: Ejecutar sembradoras de la base de datos
         run: php artisan db:seed --force
-        working-directory: Blitzvideo-api
 
       - name: Ejecutar pruebas de características
         run: vendor/bin/phpunit --testdox tests/Feature
-        working-directory: Blitzvideo-api
