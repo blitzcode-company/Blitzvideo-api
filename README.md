@@ -8,13 +8,13 @@
 
 -   Para comenzar, clona el repositorio de GitHub a tu máquina local. Abre una terminal y ejecuta el siguiente comando:
 
-`Clonar con SSH:`
+`Vía SSH:`
 
 ```
 git clone git@github.com:blitzcode-company/Blitzvideo-api.git
 ```
 
-`Clonar con HTTPS:`
+`Vía HTTPS:`
 
 ```
 git clone https://github.com/blitzcode-company/Blitzvideo-api.git
@@ -39,6 +39,12 @@ DB_HOST=mysql
 DB_PORT=3306
 ```
 
+- Generar la clave de la aplicación
+
+```
+php artisan key:generate
+```
+
 -   Realizamos las migraciones con el comando:
 
 ```
@@ -51,3 +57,21 @@ php db:seed
 Este proyecto depende del servicio de autenticación OAuth proporcionado por el repositorio [Oauth-api](https://github.com/blitzcode-company/Oauth-api).
 
 Asegúrate de clonar y configurar este repositorio antes de ejecutar el proyecto Blitzvideo-api.
+
+## Docker Compose
+
+Después de clonar los repositorios Blitzvideo-api y Oauth-api, procede a clonar el archivo Docker Compose:
+
+`Vía SSH:`
+
+```
+git clone git@gist.github.com:2f6cb08daf327f6999ecd28cb128056a.git
+```
+
+`Vía HTTPS:`
+
+```
+git clone https://gist.github.com/diegovega223/2f6cb08daf327f6999ecd28cb128056a.git
+```
+
+**Nota:** Asegúrate de colocar los archivos al mismo nivel de directorio que los repositorios Blitzvideo-api y Oauth-api.
