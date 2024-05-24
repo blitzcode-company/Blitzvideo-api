@@ -36,13 +36,11 @@ jobs:
           coverage: none
           tools: composer
 
-     - name: Copiar .env.example a .env
-       run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-       working-directory: ${{ github.workspace }}
+      - name: Copiar .env.example a .env
+        run: php -r "file_exists('Blitzvideo-api/.env') || copy('Blitzvideo-api/.env.example', 'Blitzvideo-api/.env');"
 
       - name: Mostrar contenido de .env
-        run: cat .env
-        working-directory: Blitzvideo-api
+        run: cat Blitzvideo-api/.env
 
       - name: Instalar dependencias
         run: composer install --prefer-dist --no-progress --no-suggest
