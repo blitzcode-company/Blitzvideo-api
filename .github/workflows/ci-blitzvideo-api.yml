@@ -30,14 +30,14 @@ jobs:
       - name: Configurar PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: "8.2"
           extensions: mbstring, exif, pcntl, bcmath, intl, mysql
           ini-values: post_max_size=256M, upload_max_filesize=256M, memory_limit=2G
           coverage: none
           tools: composer
 
       - name: Copiar .env.example a .env
-        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+        run: php -r "file_exists('../.env') || copy('../.env.example', '../.env');"
         working-directory: Blitzvideo-api
 
       - name: Mostrar contenido de .env
