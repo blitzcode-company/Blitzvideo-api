@@ -1,6 +1,16 @@
 # Blitzvideo-api
 
-## Configuración del proyecto
+<div style="display: inline-block; margin-right: 20px;">
+    ![Logo 1](https://drive.google.com/uc?export=download&id=1yyVoEHmLQgzYpDJJJvjtpo1MHdZNP84k)
+</div>
+
+<div style="display: inline-block;">
+    ![Logo 2](https://drive.google.com/uc?export=download&id=1KuP9mDipUgJcDVqX1aJqdno8sKgiiEm4)
+</div>
+
+
+
+### Configuración del proyecto
 
 - Para comenzar, clona el repositorio de GitHub a tu máquina local. Abre una terminal y ejecuta el siguiente comando:
 
