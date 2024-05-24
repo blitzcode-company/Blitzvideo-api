@@ -73,6 +73,10 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
 
+      - name: Crear base de datos
+        run: |
+          mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS Blitzvideo;"
+
       - name: Ejecutar migraciones de la base de datos
         run: php artisan migrate --force
 
