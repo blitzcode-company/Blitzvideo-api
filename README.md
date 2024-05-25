@@ -75,3 +75,33 @@ git clone https://gist.github.com/diegovega223/2f6cb08daf327f6999ecd28cb128056a.
 ```
 
 **Nota:** Asegúrate de colocar los archivos al mismo nivel de directorio que los repositorios Blitzvideo-api y Oauth-api.
+
+## Pasos para configurar MinIO y el proyecto
+
+- **Inicio de sesión en MinIO:**
+Accede a la interfaz de administración de MinIO en http://localhost:9001 utilizando las credenciales predeterminadas:
+
+    `Usuario: admin`
+    
+    `Contraseña: Blitzcode123.`
+
+ - **Creación del bucket:**
+Crea un nuevo bucket llamado `blitzvideo-bucket` desde la interfaz de **MinIO**.
+
+ - **Creación del usuario:**
+    Crea un nuevo usuario llamado `blitzcode-admin` con la contraseña `Blitzcode123`.
+
+ - **Configuración de las políticas:**
+        Marca todas las políticas disponibles para el usuario `blitzcode-admin`.
+
+ - **Generación de Access Key y Secret Key:**
+        Accede al usuario blitzcode-admin y crea una cuenta de servicio.
+        Genera las `Access Key` y `Secret Key` para esta cuenta de servicio.
+
+ - **Configuración en el proyecto:**
+        Copia las Access Key y Secret Key generadas y pégalas en el archivo **.env** del proyecto bajo las variables `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`.
+
+ - **Configuración del bucket como público:**
+    - Accede al bucket **blitzvideo-bucket**.
+    - Ve a **Summary**-> **Access Policy**.
+    - Configura la política de acceso como **public**.

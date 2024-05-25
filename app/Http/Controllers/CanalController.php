@@ -74,17 +74,16 @@ class CanalController extends Controller
         try {
             $canal = Canal::findOrFail($canalId);
             $videos = Video::where('canal_id', $canalId)->get();
-
             foreach ($videos as $video) {
-                unlink($video->link);
-                $video->forceDelete();
+                $video->delete();
             }
-            $canal->forceDelete();
-            return response()->json(['message' => 'Tu canal y todos tus videos se han eliminado permanentemente'], 200);
+            $canal->delete();
+    
+            return response()->json(['message' => 'Tu canal y todos tus videos se han dado de baja correctamente'], 200);
         } catch (ModelNotFoundException $exception) {
             return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);
         } catch (QueryException $exception) {
-            return response()->json(['message' => 'Ocurrió un error al eliminar tu canal y tus videos, por favor inténtalo de nuevo más tarde'], 500);
+            return response()->json(['message' => 'Ocurrió un error al dar de baja tu canal y tus videos, por favor inténtalo de nuevo más tarde'], 500);
         }
     }
 }

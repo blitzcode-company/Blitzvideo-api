@@ -50,8 +50,8 @@ class CanalControllerTest extends TestCase
     public function testCrearCanalUsuarioNuevo()
     {
         $user = new User();
-        $user->name = 'Diego';
-        $user->email = 'diego@gmail.com';
+        $user->name = 'Pedro';
+        $user->email = 'Pedro@gmail.com';
         $user->password = bcrypt('password');
         $user->save();
 
@@ -77,11 +77,8 @@ class CanalControllerTest extends TestCase
             $this->markTestSkipped('No se encontró un canal con el nombre especificado en la base de datos');
         }
         $canalId = $canal->id;
-        $controller = new CanalController();
-        $response = $controller->darDeBajaCanal($canalId);
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $this->assertJson($response->getContent());
-        TestResponse::fromBaseResponse($response)
-            ->assertJsonFragment(['message' => 'Tu canal y todos tus videos se han eliminado permanentemente']);
+        $response = $this->delete(env('BLITZVIDEO_BASE_URL') . "canal/{$canalId}");
+        $response->assertStatus(200);
+        $response->assertJson(['message' => 'Tu canal y todos tus videos se han dado de baja correctamente']);
     }
 }

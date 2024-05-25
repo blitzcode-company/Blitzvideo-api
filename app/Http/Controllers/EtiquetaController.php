@@ -11,7 +11,11 @@ class EtiquetaController extends Controller
 
     public function asignarEtiquetas(Request $request, $idVideo)
     {
-        $video = Video::findOrFail($idVideo);
+        try {
+            $video = Video::findOrFail($idVideo);
+        } catch (ModelNotFoundException $exception) {
+            return response()->json(['message' => 'El video no existe'], 404);
+        }
         $etiquetas = $request->input('etiquetas');
         $video->etiquetas()->sync($etiquetas);
         return response()->json(['message' => 'Etiquetas asignadas correctamente al video'], 200);
@@ -30,7 +34,7 @@ class EtiquetaController extends Controller
         return response()->json($etiquetas, 200);
     }
 
-    public function filtrarVideosPorEtiquetaYCanal($canalId, $etiquetaId)
+    public function filtrarVideosPorEtiquetaYCanal($etiquetaId, $canalId)
     {
         $videos = Video::where('canal_id', $canalId)
             ->whereHas('etiquetas', function ($query) use ($etiquetaId) {

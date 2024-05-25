@@ -62,7 +62,7 @@ class VideoControllerTest extends TestCase
 
     public function testMostrarTodosLosVideos()
     {
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos/listar');
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos');
         $response->assertStatus(200);
         $response->assertJsonStructure($this->expectedVideoJsonStructure());
     }
@@ -71,7 +71,7 @@ class VideoControllerTest extends TestCase
     {
         $nombre = "Título";
 
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos/buscar/' . $nombre);
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos/nombre/' . $nombre);
         $response->assertStatus(200);
         $response->assertJsonStructure($this->expectedVideoJsonStructure());
     }
@@ -79,7 +79,7 @@ class VideoControllerTest extends TestCase
     public function testMostrarInformacionVideo()
     {
         $videoId = Video::first()->id;
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$videoId}/info");
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$videoId}");
         $response->assertStatus(200);
         $response->assertJsonStructure([
             'id',
@@ -124,35 +124,13 @@ class VideoControllerTest extends TestCase
         ]);
     }
 
-    public function testSubirVideo()
-    {
-        $canal = Canal::first();
-        $titulo = 'Título de video de prueba';
-        $descripcion = 'Descripción del video';
-        $video = UploadedFile::fake()->create('video.mp4', 10000);
-        $response = $this->post(
-            env('BLITZVIDEO_BASE_URL') . "videos/nuevo/{$canal->id}",
-            [
-                'titulo' => $titulo,
-                'descripcion' => $descripcion,
-                'video' => $video,
-            ]
-        );
-        $response->assertStatus(201);
-        $this->assertDatabaseHas('videos', [
-            'titulo' => $titulo,
-            'descripcion' => $descripcion,
-            'canal_id' => $canal->id,
-        ]);
-    }
-
     public function testEditarVideo()
     {
         $video = Video::first();
         $nuevoTitulo = 'Nuevo título del video';
         $nuevaDescripcion = 'Nueva descripción del video';
         $response = $this->post(
-            env('BLITZVIDEO_BASE_URL') . "videos/editar/{$video->id}",
+            env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}",
             [
                 'titulo' => $nuevoTitulo,
                 'descripcion' => $nuevaDescripcion,

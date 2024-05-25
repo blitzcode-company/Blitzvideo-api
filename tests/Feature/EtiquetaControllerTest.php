@@ -25,7 +25,7 @@ class EtiquetaControllerTest extends TestCase
         $etiqueta = Etiqueta::create([
             'nombre' => 'Etiqueta de prueba',
         ]);
-        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/etiquetas", [
+        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "etiquetas/videos/{$video->id}", [
             'etiquetas' => [$etiqueta->id],
         ]);
         $response->assertStatus(Response::HTTP_OK);
@@ -52,7 +52,7 @@ class EtiquetaControllerTest extends TestCase
     {
         $canalId = 1;
         $etiquetaId = 1; 
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "canal/{$canalId}/etiqueta/{$etiquetaId}/videos");
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "etiquetas/{$etiquetaId}/canal/{$canalId}/videos");
         $response->assertStatus(Response::HTTP_OK);
     }
     

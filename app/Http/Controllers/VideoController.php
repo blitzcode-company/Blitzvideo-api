@@ -39,7 +39,6 @@ class VideoController extends Controller
         return response()->json($videos, 200);
     }
 
-
     public function subirVideo(Request $request, $canalId)
     {
         $request->validate([
@@ -47,9 +46,11 @@ class VideoController extends Controller
             'descripcion' => 'required|string',
             'video' => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
         ]);
+
         $canal = Canal::findOrFail($canalId);
-        $rutaVideo = $request->file('video')->store('videos', 'public');
-        $urlVideo = Storage::disk('public')->path($rutaVideo);
+        $folderPath = 'videos/' . $canalId;
+        $rutaVideo = $request->file('video')->store($folderPath, 's3');
+        $urlVideo = Storage::disk('s3')->url($rutaVideo);
         $video = new Video([
             'titulo' => $request->titulo,
             'descripcion' => $request->descripcion,
@@ -65,13 +66,20 @@ class VideoController extends Controller
         $video = Video::findOrFail($idVideo);
         $video->delete();
         $video->save();
-        // unlink($video->link); // Debería borrar el video si la baja es logica?
         return response()->json(['message' => 'Video dado de baja correctamente'], 200);
     }
 
     public function editarVideo(Request $request, $idVideo)
     {
+        $request->validate([
+            'titulo' => 'sometimes|required|string|max:255',
+            'descripcion' => 'sometimes|required|string',
+            'video' => 'sometimes|required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
+        ]);
         $video = Video::findOrFail($idVideo);
+        $urlParts = parse_url($video->link);
+        $oldVideoPath = ltrim($urlParts['path'], '/');
+        $folderPath = 'videos/' . $video->canal_id;
         if ($request->has('titulo')) {
             $video->titulo = $request->titulo;
         }
@@ -79,9 +87,12 @@ class VideoController extends Controller
             $video->descripcion = $request->descripcion;
         }
         if ($request->hasFile('video')) {
-            unlink($video->link);
-            $rutaVideo = $request->file('video')->store('videos', 'public');
-            $urlVideo = Storage::disk('public')->path($rutaVideo);
+            if (!empty($oldVideoPath)) {
+                Storage::disk('s3')->delete($oldVideoPath);
+            }
+            $videoFileName = basename($oldVideoPath);
+            $rutaVideo = $request->file('video')->storeAs($folderPath, $videoFileName, 's3');
+            $urlVideo = Storage::disk('s3')->url($rutaVideo);
             $video->link = $urlVideo;
         }
         $video->save();
