@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('usuario')->group(function () {
-        Route::get('{userId}/visita/{videoId}', [UserController::class, 'visita']);
+        Route::get('/', [UserController::class, 'listarUsuarios']);
     });
     Route::prefix('videos')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarTodosLosVideos']);
@@ -27,6 +27,11 @@ Route::prefix('v1')->group(function () {
 });
 
 Route::prefix('v1')->middleware('auth.api')->group(function () {
+    Route::prefix('usuario')->group(function () {
+        Route::get('{userId}/visita/{videoId}', [UserController::class, 'visita']);
+        Route::delete('{userId}', [UserController::class, 'darDeBajaUsuario']);
+        Route::post('{userId}', [UserController::class, 'editarUsuario']);
+    });
     Route::prefix('videos')->group(function () {
         Route::post('/canal/{idCanal}', [VideoController::class, 'subirVideo']);
         Route::post('/{idVideo}', [VideoController::class, 'editarVideo']);

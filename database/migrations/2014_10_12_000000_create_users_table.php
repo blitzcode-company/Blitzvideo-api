@@ -18,6 +18,7 @@ class CreateUsersTable extends Migration
             $table->boolean('premium')->default(false);
             $table->string('foto')->nullable();
             $table->rememberToken();
+            $table->softDeletes(); 
             $table->timestamps();
         });
     }

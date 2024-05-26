@@ -37,9 +37,6 @@ class CanalController extends Controller
         $this->guardarCanal($canal);
         return response()->json(['message' => 'Canal creado correctamente'], 201);
     }
-    
-    
-
 
     private function validarDatos(Request $request)
     {
@@ -70,9 +67,7 @@ class CanalController extends Controller
             $canal->portada = $urlPortada;
         }
     }
-
-
-
+    
     private function guardarCanal(Canal $canal)
     {
         return $canal->save();
