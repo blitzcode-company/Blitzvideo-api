@@ -16,12 +16,55 @@ class CanalControllerTest extends TestCase
 {
     use WithoutMiddleware;
 
+    public function testListarCanales()
+    {
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . 'canal/usuario');
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            '*' => [
+                'id',
+                'user_id',
+                'nombre',
+                'descripcion',
+                'portada',
+                'deleted_at',
+                'created_at',
+                'updated_at',
+                'user' => [
+                    'id',
+                    'name',
+                    'email',
+                    'email_verified_at',
+                    'premium',
+                    'foto',
+                    'created_at',
+                    'updated_at',
+                ],
+            ],
+        ]);
+    }
+
     public function testListarVideosDeCanal()
     {
         $canal = Canal::first();
-        $controller = new CanalController();
-        $response = $controller->listarVideosDeCanal($canal->id);
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertNotNull($canal, 'No se encontró ningún canal en la base de datos.');
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . 'canal/' . $canal->id . '/videos');
+        if ($canal->videos->isEmpty()) {
+            $this->markTestSkipped('El canal no tiene videos asociados.');
+        }
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            '*' => [
+                'id',
+                'canal_id',
+                'titulo',
+                'descripcion',
+                'link',
+                'created_at',
+                'updated_at',
+                'deleted_at',
+            ],
+        ]);
     }
 
     public function testCrearCanalUsuarioExistenteConCanal()

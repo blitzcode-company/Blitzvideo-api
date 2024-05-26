@@ -10,6 +10,12 @@ use App\Models\Video;
 
 class CanalController extends Controller
 {
+    public function listarCanales()
+    {
+        $canales = Canal::with('user')->get();
+        return response()->json($canales, 200);
+    }
+
     public function listarVideosDeCanal($canalId)
     {
         $videos = Video::where('canal_id', $canalId)->get();
