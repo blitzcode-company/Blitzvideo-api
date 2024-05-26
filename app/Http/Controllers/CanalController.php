@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use App\Models\Canal;
 use App\Models\Video;
+use App\Models\User;
 
 class CanalController extends Controller
 {
@@ -24,23 +26,20 @@ class CanalController extends Controller
 
     public function crearCanal(Request $request, $userId)
     {
-        $datosValidados = $this->validarDatos($request);
-
-        $canal = $this->crearNuevoCanal($datosValidados, $userId);
-
-        $this->guardarPortada($request, $canal);
-
-        try {
-            $this->guardarCanal($canal);
-            return response()->json(['message' => 'Canal creado correctamente'], 201);
-        } catch (QueryException $exception) {
-            if ($exception->getCode() == '23000') {
-                return response()->json(['message' => 'El usuario ya tiene un canal'], 500);
-            } else {
-                return response()->json(['message' => 'Error al crear el canal'], 500);
-            }
+        $usuario = User::findOrFail($userId);
+        $canalExistente = Canal::where('user_id', $userId)->first();
+        if ($canalExistente) {
+            return response()->json(['message' => 'El usuario ya tiene un canal'], 500);
         }
+        $datosValidados = $this->validarDatos($request);
+        $canal = $this->crearNuevoCanal($datosValidados, $userId);
+        $this->guardarPortada($request, $canal);
+        $this->guardarCanal($canal);
+        return response()->json(['message' => 'Canal creado correctamente'], 201);
     }
+    
+    
+
 
     private function validarDatos(Request $request)
     {
@@ -64,11 +63,15 @@ class CanalController extends Controller
     {
         if ($request->hasFile('portada')) {
             $portada = $request->file('portada');
-            $portadaNombre = time() . '.' . $portada->getClientOriginalExtension();
-            $portada->storeAs('public/portadas', $portadaNombre);
-            $canal->portada = $portadaNombre;
+            $userId = $canal->user_id;
+            $folderPath = 'portadas/' . $userId;
+            $rutaPortada = $portada->store($folderPath, 's3');
+            $urlPortada = Storage::disk('s3')->url($rutaPortada);
+            $canal->portada = $urlPortada;
         }
     }
+
+
 
     private function guardarCanal(Canal $canal)
     {
@@ -84,7 +87,7 @@ class CanalController extends Controller
                 $video->delete();
             }
             $canal->delete();
-    
+
             return response()->json(['message' => 'Tu canal y todos tus videos se han dado de baja correctamente'], 200);
         } catch (ModelNotFoundException $exception) {
             return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);

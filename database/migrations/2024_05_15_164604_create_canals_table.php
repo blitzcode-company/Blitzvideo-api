@@ -10,7 +10,7 @@ class CreateCanalsTable extends Migration
     {
         Schema::create('canals', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->unique()->constrained();
+            $table->foreignId('user_id');
             $table->string('nombre');
             $table->text('descripcion')->nullable();
             $table->string('portada')->nullable();
