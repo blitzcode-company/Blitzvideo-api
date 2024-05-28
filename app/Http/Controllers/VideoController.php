@@ -46,11 +46,12 @@ class VideoController extends Controller
             'descripcion' => 'required|string',
             'video' => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
         ]);
+    
         if ($request->hasFile('video')) {
             $canal = Canal::findOrFail($canalId);
             $folderPath = 'videos/' . $canalId;
             $rutaVideo = $request->file('video')->store($folderPath, 's3');
-            $urlVideo = Storage::disk('s3')->url($rutaVideo);
+            $urlVideo = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaVideo));
             $video = new Video([
                 'titulo' => $request->titulo,
                 'descripcion' => $request->descripcion,
@@ -58,6 +59,7 @@ class VideoController extends Controller
             ]);
             $video->canal_id = $canal->id;
             $video->save();
+    
             return response()->json($video, 201);
         } else {
             return response()->json(['error' => 'No se proporcionó ningún archivo de video'], 400);
