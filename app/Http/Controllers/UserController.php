@@ -9,12 +9,19 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+   
     public function listarUsuarios()
     {
-
         $usuarios = User::with('canales')->get();
         return response()->json($usuarios, 200);
     }
+
+    public function mostrarUsuarioPorId($id)
+{
+    $usuario = User::with('canales')->findOrFail($id);
+    return response()->json($usuario, 200);
+}
+
 
     public function visita($userId, $videoId)
     {

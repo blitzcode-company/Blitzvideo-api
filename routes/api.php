@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::prefix('usuario')->group(function () {
         Route::get('/', [UserController::class, 'listarUsuarios']);
+        Route::get('/{id}', [UserController::class, 'mostrarUsuarioPorId']);
     });
     Route::prefix('videos')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarTodosLosVideos']);
