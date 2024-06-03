@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Video;
-use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\EtiquetaController;
 use App\Models\Canal;
-use Illuminate\Support\Facades\Log;
+use App\Models\Video;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class VideoController extends Controller
 {
@@ -45,13 +45,15 @@ class VideoController extends Controller
             'titulo' => 'required|string|max:255',
             'descripcion' => 'required|string',
             'video' => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
+            'etiquetas' => 'array',
         ]);
-    
+
         if ($request->hasFile('video')) {
             $canal = Canal::findOrFail($canalId);
             $folderPath = 'videos/' . $canalId;
             $rutaVideo = $request->file('video')->store($folderPath, 's3');
             $urlVideo = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaVideo));
+
             $video = new Video([
                 'titulo' => $request->titulo,
                 'descripcion' => $request->descripcion,
@@ -59,13 +61,17 @@ class VideoController extends Controller
             ]);
             $video->canal_id = $canal->id;
             $video->save();
-    
+
+            if ($request->has('etiquetas')) {
+                $etiquetasController = new EtiquetaController();
+                $etiquetasController->asignarEtiquetas($request, $video->id);
+            }
+
             return response()->json($video, 201);
         } else {
             return response()->json(['error' => 'No se proporcionó ningún archivo de video'], 400);
         }
     }
-    
 
     public function bajaLogicaVideo($idVideo)
     {
