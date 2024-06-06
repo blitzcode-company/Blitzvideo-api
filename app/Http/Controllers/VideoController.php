@@ -7,6 +7,8 @@ use App\Models\Canal;
 use App\Models\Video;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use FFMpeg\FFMpeg;
+use FFMpeg\Coordinate\TimeCode;
 
 class VideoController extends Controller
 {
@@ -54,10 +56,14 @@ class VideoController extends Controller
             $rutaVideo = $request->file('video')->store($folderPath, 's3');
             $urlVideo = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaVideo));
 
+            $urlMiniatura = $this->generarMiniatura($request->file('video'), $canalId);
+
             $video = new Video([
                 'titulo' => $request->titulo,
                 'descripcion' => $request->descripcion,
                 'link' => $urlVideo,
+                'miniatura' => $urlMiniatura,
+
             ]);
             $video->canal_id = $canal->id;
             $video->save();
@@ -72,6 +78,32 @@ class VideoController extends Controller
             return response()->json(['error' => 'No se proporcionó ningún archivo de video'], 400);
         }
     }
+ 
+    private function generarMiniatura($videoFile, $canalId)
+    {
+        $videoPath = $videoFile->getRealPath();
+        $miniaturaNombre = uniqid() . '.jpg';
+        $miniaturaLocalPath = '/tmp/' . $miniaturaNombre;
+        $miniaturaS3Path = 'miniaturas/' . $canalId . '/miniaturas/' . $miniaturaNombre;
+    
+        $ffmpeg = FFMpeg::create([
+            'ffmpeg.binaries' => env('FFMPEG_BINARIES'),
+            'ffprobe.binaries' => env('FFPROBE_BINARIES'),
+        ]);
+    
+        $video = $ffmpeg->open($videoPath);
+    
+        $frame = $video->frame(TimeCode::fromSeconds(10));
+    
+        $frame->save($miniaturaLocalPath);
+    
+        Storage::disk('s3')->put($miniaturaS3Path, file_get_contents($miniaturaLocalPath));
+    
+        unlink($miniaturaLocalPath);
+    
+        return str_replace('minio', 'localhost', Storage::disk('s3')->url($miniaturaS3Path));
+    }
+
 
     public function bajaLogicaVideo($idVideo)
     {

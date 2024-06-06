@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('canal_id')->constrained()->onDelete('cascade');
             $table->string('titulo');
             $table->text('descripcion');
+            $table->string('miniatura');
             $table->string('link')->unique();
             $table->timestamps();
             $table->softDeletes();

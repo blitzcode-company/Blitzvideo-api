@@ -13,6 +13,8 @@
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
         "league/flysystem-aws-s3-v3": "^1.0",
+        "pbmedia/laravel-ffmpeg": "^7.8",
+        "php-ffmpeg/php-ffmpeg": "^1.2",
         "tymon/jwt-auth": "^1.0@dev"
     },
     "require-dev": {

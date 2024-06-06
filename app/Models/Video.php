@@ -15,6 +15,7 @@ class Video extends Model
         'link',
         'activo',
         'canal_id',
+        'miniatura'
     ];
 
     public function canal()
