@@ -85,22 +85,15 @@ class VideoController extends Controller
         $miniaturaNombre = uniqid() . '.jpg';
         $miniaturaLocalPath = '/tmp/' . $miniaturaNombre;
         $miniaturaS3Path = 'miniaturas/' . $canalId . '/miniaturas/' . $miniaturaNombre;
-    
         $ffmpeg = FFMpeg::create([
             'ffmpeg.binaries' => env('FFMPEG_BINARIES'),
             'ffprobe.binaries' => env('FFPROBE_BINARIES'),
         ]);
-    
         $video = $ffmpeg->open($videoPath);
-    
         $frame = $video->frame(TimeCode::fromSeconds(10));
-    
         $frame->save($miniaturaLocalPath);
-    
         Storage::disk('s3')->put($miniaturaS3Path, file_get_contents($miniaturaLocalPath));
-    
         unlink($miniaturaLocalPath);
-    
         return str_replace('minio', 'localhost', Storage::disk('s3')->url($miniaturaS3Path));
     }
 
