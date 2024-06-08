@@ -19,6 +19,7 @@ class EtiquetaControllerTest extends TestCase
             'titulo' => 'Video de prueba',
             'descripcion' => 'Descripción del video de prueba',
             'link' => 'https://Blitzvideo.com/video',
+            'miniatura' => 'https://Blitzvideo.com/miniatura',
             'canal_id' => 1,
         ]);
 
