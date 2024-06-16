@@ -113,11 +113,16 @@ class VideoController extends Controller
             'titulo' => 'sometimes|required|string|max:255',
             'descripcion' => 'sometimes|required|string',
             'video' => 'sometimes|required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
+            'miniatura' => 'sometimes|required|image|mimes:jpeg,png,jpg,gif|max:10240'
         ]);
+
         $video = Video::findOrFail($idVideo);
-        $urlParts = parse_url($video->link);
-        $oldVideoPath = ltrim($urlParts['path'], '/');
+        $oldVideoPath = $this->getStoragePath($video->link);
+        $oldMiniaturaPath = $this->getStoragePath($video->miniatura);
+
         $folderPath = 'videos/' . $video->canal_id;
+        $folderPathMiniatura = 'miniaturas/' . $video->canal_id;
+
         if ($request->has('titulo')) {
             $video->titulo = $request->titulo;
         }
@@ -125,15 +130,35 @@ class VideoController extends Controller
             $video->descripcion = $request->descripcion;
         }
         if ($request->hasFile('video')) {
-            if (!empty($oldVideoPath)) {
+            if ($oldVideoPath) {
                 Storage::disk('s3')->delete($oldVideoPath);
             }
-            $videoFileName = basename($oldVideoPath);
-            $rutaVideo = $request->file('video')->storeAs($folderPath, $videoFileName, 's3');
-            $urlVideo = Storage::disk('s3')->url($rutaVideo);
-            $video->link = $urlVideo;
+            $rutaVideo = $request->file('video')->store($folderPath, 's3');
+            $video->link = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaVideo));
+
+            $urlMiniatura = $this->generarMiniatura($request->file('video'), $video->canal_id);
+            if ($oldMiniaturaPath) {
+                Storage::disk('s3')->delete($oldMiniaturaPath);
+            }
+            $video->miniatura = $urlMiniatura;
         }
+
+        if ($request->hasFile('miniatura')) {
+            if ($oldMiniaturaPath) {
+                Storage::disk('s3')->delete($oldMiniaturaPath);
+            }
+            $rutaMiniatura = $request->file('miniatura')->store($folderPathMiniatura, 's3');
+            $video->miniatura = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaMiniatura));
+        }
+
         $video->save();
+
         return response()->json(['message' => 'Video actualizado correctamente'], 200);
+    }
+
+    private function getStoragePath($url)
+    {
+        $urlParts = parse_url($url);
+        return ltrim($urlParts['path'], '/');
     }
 }
