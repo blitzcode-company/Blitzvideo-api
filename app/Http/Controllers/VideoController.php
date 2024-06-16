@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use FFMpeg\FFMpeg;
 use FFMpeg\Coordinate\TimeCode;
+use App\Helpers\FFMpegHelper;
+
 
 class VideoController extends Controller
 {
@@ -79,22 +81,21 @@ class VideoController extends Controller
         }
     }
  
-    private function generarMiniatura($videoFile, $canalId)
-    {
+   
+    private function generarMiniatura($videoFile, $canalId) {
         $videoPath = $videoFile->getRealPath();
         $miniaturaNombre = uniqid() . '.jpg';
-        $miniaturaLocalPath = '/tmp/' . $miniaturaNombre;
-        $miniaturaS3Path = 'miniaturas/' . $canalId . '/miniaturas/' . $miniaturaNombre;
-        $ffmpeg = FFMpeg::create([
-            'ffmpeg.binaries' => env('FFMPEG_BINARIES'),
-            'ffprobe.binaries' => env('FFPROBE_BINARIES'),
-        ]);
+        $miniaturaLocalRuta = '/tmp/' . $miniaturaNombre;
+        $miniaturaS3Ruta = 'miniaturas/' . $canalId . '/miniaturas/' . $miniaturaNombre;
+        $ffmpeg = FFMpegHelper::crearFFMpeg();
         $video = $ffmpeg->open($videoPath);
-        $frame = $video->frame(TimeCode::fromSeconds(10));
-        $frame->save($miniaturaLocalPath);
-        Storage::disk('s3')->put($miniaturaS3Path, file_get_contents($miniaturaLocalPath));
-        unlink($miniaturaLocalPath);
-        return str_replace('minio', 'localhost', Storage::disk('s3')->url($miniaturaS3Path));
+        $duracionTotal = $video->getStreams()->videos()->first()->get('duration');
+        $tiempoAleatorio = rand(0, $duracionTotal);
+        $frame = $video->frame(TimeCode::fromSeconds($tiempoAleatorio));
+        $frame->save($miniaturaLocalRuta);
+        Storage::disk('s3')->put($miniaturaS3Ruta, file_get_contents($miniaturaLocalRuta));
+        unlink($miniaturaLocalRuta);
+        return str_replace('minio', 'localhost', Storage::disk('s3')->url($miniaturaS3Ruta));
     }
 
 

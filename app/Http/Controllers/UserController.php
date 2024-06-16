@@ -7,6 +7,7 @@ use App\Models\Visita;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
+
 class UserController extends Controller
 {
    
@@ -47,13 +48,19 @@ class UserController extends Controller
     {
         try {
             $usuario = User::findOrFail($userId);
-            $usuario->name = $request->input('name');
-            $usuario->email = $request->input('email');
+            if ($request->has('name')) {
+                $usuario->name = $request->input('name');
+            }
+            
+            if ($request->has('email')) {
+                $usuario->email = $request->input('email');
+            }
             if ($request->hasFile('foto')) {
                 $foto = $request->file('foto');
                 $folderPath = 'perfil/' . $userId;
                 $rutaFoto = $foto->store($folderPath, 's3');
-                $urlFoto = Storage::disk('s3')->url($rutaFoto);
+                $urlFoto = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaFoto));
+                
                 $usuario->foto = $urlFoto;
             }
             $usuario->save();
