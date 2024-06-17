@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CanalController;
+use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
@@ -15,6 +16,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarTodosLosVideos']);
         Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
         Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
+        Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
@@ -37,6 +39,11 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/canal/{idCanal}', [VideoController::class, 'subirVideo']);
         Route::post('/{idVideo}', [VideoController::class, 'editarVideo']);
         Route::delete('/{idVideo}', [VideoController::class, 'bajaLogicaVideo']);
+        
+        Route::post('/{idVideo}/comentarios', [ComentarioController::class, 'crearComentario']);
+        Route::post('/comentarios/respuesta/{idComentario}', [ComentarioController::class, 'responderComentario']);
+        Route::post('/comentarios/{idComentario}', [ComentarioController::class, 'editarComentario']);
+        Route::delete('/comentarios/{idComentario}', [ComentarioController::class, 'bajaLogicaComentario']);
     });
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
