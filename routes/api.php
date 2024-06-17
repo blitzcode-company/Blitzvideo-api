@@ -5,6 +5,7 @@ use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
+use App\Http\Controllers\MeGustaController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -39,11 +40,12 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/canal/{idCanal}', [VideoController::class, 'subirVideo']);
         Route::post('/{idVideo}', [VideoController::class, 'editarVideo']);
         Route::delete('/{idVideo}', [VideoController::class, 'bajaLogicaVideo']);
-        
         Route::post('/{idVideo}/comentarios', [ComentarioController::class, 'crearComentario']);
         Route::post('/comentarios/respuesta/{idComentario}', [ComentarioController::class, 'responderComentario']);
         Route::post('/comentarios/{idComentario}', [ComentarioController::class, 'editarComentario']);
         Route::delete('/comentarios/{idComentario}', [ComentarioController::class, 'bajaLogicaComentario']);
+        Route::post('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'darMeGusta']);
+        Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
     });
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
