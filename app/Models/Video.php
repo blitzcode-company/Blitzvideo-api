@@ -32,4 +32,15 @@ class Video extends Model
     {
         return $this->hasMany(Visita::class);
     }
+
+    public function puntuaciones()
+    {
+        return $this->hasMany(Puntua::class);
+    }
+
+    public function getPuntuacionPromedioAttribute()
+    {
+        $promedio = $this->puntuaciones()->avg('valora');
+        return round($promedio);
+    }
 }

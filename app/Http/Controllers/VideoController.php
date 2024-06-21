@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\FFMpegHelper;
 use App\Models\Canal;
 use App\Models\Video;
+use FFMpeg\Coordinate\TimeCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Helpers\FFMpegHelper;
-use FFMpeg\Coordinate\TimeCode;
 
 class VideoController extends Controller
 {
     public function mostrarTodosLosVideos(Request $request)
     {
-        $videos = $this->obtenerVideosConRelaciones()->take(20)->get();
+        $videos = $this->obtenerVideosConRelaciones()->take(20);
         return response()->json($videos, 200);
     }
 
@@ -25,7 +25,7 @@ class VideoController extends Controller
 
     public function listarVideosPorNombre(Request $request, $nombre)
     {
-        $videos = $this->obtenerVideosPorNombre($nombre)->take(20)->get();
+        $videos = $this->obtenerVideosPorNombre($nombre)->take(20);
         return response()->json($videos, 200);
     }
 
@@ -223,21 +223,98 @@ class VideoController extends Controller
 
     private function obtenerVideosConRelaciones()
     {
-        return Video::with('canal.user', 'etiquetas')
-                    ->withCount('visitas');
+        $videos = Video::with([
+            'canal:id,nombre,descripcion,user_id',
+            'canal.user:id,name,email',
+            'etiquetas:id,nombre',
+        ])
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+                'visitas',
+            ])->get();
+
+        $videos->each(function ($video) {
+            $video->promedio_puntuaciones = $video->puntuacion_promedio;
+        });
+
+        return $videos;
     }
 
     private function obtenerVideoPorId($idVideo)
     {
-        return Video::with('canal.user', 'etiquetas')
-                    ->withCount('visitas')
-                    ->findOrFail($idVideo);
+        $video = Video::with([
+            'canal:id,nombre,descripcion,user_id',
+            'canal.user:id,name,email',
+            'etiquetas:id,nombre',
+        ])
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+                'visitas',
+            ])->findOrFail($idVideo);
+
+        $video->promedio_puntuaciones = $video->puntuacion_promedio;
+
+        return $video;
     }
 
     private function obtenerVideosPorNombre($nombre)
     {
-        return Video::with('canal.user', 'etiquetas')
-                    ->withCount('visitas')
-                    ->where('titulo', 'LIKE', '%' . $nombre . '%');
+        $videos = Video::with([
+            'canal:id,nombre,descripcion,user_id',
+            'canal.user:id,name,email',
+            'etiquetas:id,nombre',
+        ])
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+                'visitas',
+            ])->where('titulo', 'LIKE', '%' . $nombre . '%')->get();
+
+        $videos->each(function ($video) {
+            $video->promedio_puntuaciones = $video->puntuacion_promedio;
+        });
+
+        return $videos;
     }
 }

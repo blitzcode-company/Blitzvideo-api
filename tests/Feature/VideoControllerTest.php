@@ -2,13 +2,9 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Tests\TestCase;
-use App\Models\Video;
-use App\Models\Canal;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 
 class VideoControllerTest extends TestCase
 {
@@ -26,31 +22,27 @@ class VideoControllerTest extends TestCase
                 'created_at',
                 'updated_at',
                 'deleted_at',
+                'puntuacion_1',
+                'puntuacion_2',
+                'puntuacion_3',
+                'puntuacion_4',
+                'puntuacion_5',
                 'visitas_count',
+                'promedio_puntuaciones',
                 'canal' => [
                     'id',
                     'user_id',
                     'nombre',
-                    'descripcion',
-                    'portada',
-                    'deleted_at',
-                    'created_at',
-                    'updated_at',
                     'user' => [
                         'id',
                         'name',
                         'email',
-                        'email_verified_at',
-                        'created_at',
-                        'updated_at',
                     ],
                 ],
                 'etiquetas' => [
                     '*' => [
                         'id',
                         'nombre',
-                        'created_at',
-                        'updated_at',
                         'pivot' => [
                             'video_id',
                             'etiqueta_id',
@@ -92,31 +84,28 @@ class VideoControllerTest extends TestCase
             'created_at',
             'updated_at',
             'deleted_at',
+            'puntuacion_1',
+            'puntuacion_2',
+            'puntuacion_3',
+            'puntuacion_4',
+            'puntuacion_5',
             'visitas_count',
+            'promedio_puntuaciones',
             'canal' => [
                 'id',
-                'user_id',
                 'nombre',
                 'descripcion',
-                'portada',
-                'deleted_at',
-                'created_at',
-                'updated_at',
+                'user_id',
                 'user' => [
                     'id',
                     'name',
                     'email',
-                    'email_verified_at',
-                    'created_at',
-                    'updated_at',
                 ],
             ],
             'etiquetas' => [
                 '*' => [
                     'id',
                     'nombre',
-                    'created_at',
-                    'updated_at',
                     'pivot' => [
                         'video_id',
                         'etiqueta_id',

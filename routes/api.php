@@ -6,6 +6,7 @@ use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\MeGustaController;
+use App\Http\Controllers\PuntuaController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -50,6 +51,10 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/comentarios/{idComentario}', [ComentarioController::class, 'bajaLogicaComentario']);
         Route::post('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'darMeGusta']);
         Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
+        
+        Route::post('/{idVideo}/puntuar', [PuntuaController::class, 'puntuar']);
+        Route::post('/puntuar/{idPuntua}', [PuntuaController::class, 'editarPuntuacion']);
+        Route::delete('/puntuar/{idPuntua}', [PuntuaController::class, 'bajaLogicaPuntuacion']);
     });
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
