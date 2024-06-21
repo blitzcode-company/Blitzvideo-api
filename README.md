@@ -56,25 +56,16 @@ php db:seed
 
 Este proyecto depende del servicio de autenticación OAuth proporcionado por el repositorio [Oauth-api](https://github.com/blitzcode-company/Oauth-api).
 
-Asegúrate de clonar y configurar este repositorio antes de ejecutar el proyecto Blitzvideo-api.
-
 ## Docker Compose
 
-Después de clonar los repositorios Blitzvideo-api y Oauth-api, procede a clonar el archivo Docker Compose:
-
-`Vía SSH:`
+Inicia el proyecto con el siguiente comando:
 
 ```
-git clone git@gist.github.com:2f6cb08daf327f6999ecd28cb128056a.git
+sudo docker-compose up -d
 ```
+El proyecto estará corriendo en el puerto **8001**. Puede corroborarlo ingresando a `http://localhost:8001/`. 
 
-`Vía HTTPS:`
-
-```
-git clone https://gist.github.com/diegovega223/2f6cb08daf327f6999ecd28cb128056a.git
-```
-
-**Nota:** Asegúrate de colocar los archivos al mismo nivel de directorio que los repositorios Blitzvideo-api y Oauth-api.
+**Nota:** Luego debes iniciar el proyecto de Oauth-api.
 
 ## Pasos para configurar MinIO y el proyecto
 
