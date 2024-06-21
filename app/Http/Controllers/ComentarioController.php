@@ -9,7 +9,8 @@ class ComentarioController extends Controller
 {
     public function traerComentariosDeVideo($idVideo)
     {
-        $comentarios = Comentario::where('video_id', $idVideo)->get();
+        $comentarios = Comentario::with([
+            'user:id,name,foto'])->where('video_id', $idVideo)->get();
         return response()->json($comentarios, 200);
     }
 

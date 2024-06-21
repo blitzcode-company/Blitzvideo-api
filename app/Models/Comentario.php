@@ -21,7 +21,7 @@ class Comentario extends Model
         'updated_at' => 'datetime',
     ];
 
-    public function usuario()
+    public function user()
     {
         return $this->belongsTo(User::class, 'usuario_id');
     }
@@ -34,10 +34,5 @@ class Comentario extends Model
     public function respuesta()
     {
         return $this->belongsTo(Comentario::class, 'respuesta_id');
-    }
-
-    public function respuestasHijas()
-    {
-        return $this->hasMany(Comentario::class, 'respuesta_id');
     }
 }
