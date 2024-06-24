@@ -4,9 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BlitzVideo API</title>
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Styles -->
     <style>
         body {
             font-family: 'Nunito', sans-serif;
@@ -33,6 +31,11 @@
             font-size: 1.5rem;
             color: #001f31;
         }
+        .version {
+            margin-top: 20px;
+            font-size: 1rem;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -40,6 +43,7 @@
         <img src="{{ asset('images/Blitzvideo.png') }}" alt="BlitzVideo Logo" class="logo">
         <div class="title">Bienvenido a BlitzVideo API</div>
         <div class="subtitle">La API está corriendo correctamente</div>
+        <div class="version">Laravel Version: {{ \Illuminate\Foundation\Application::VERSION }}</div>
     </div>
 </body>
 </html>
