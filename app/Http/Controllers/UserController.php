@@ -23,16 +23,6 @@ class UserController extends Controller
     return response()->json($usuario, 200);
 }
 
-
-    public function visita($userId, $videoId)
-    {
-        Visita::create([
-            'user_id' => $userId,
-            'video_id' => $videoId,
-        ]);
-        return response()->json(['message' => 'Visita registrada con éxito']);
-    }
-
     public function darDeBajaUsuario($userId)
     {
         try {

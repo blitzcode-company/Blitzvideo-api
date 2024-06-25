@@ -44,24 +44,6 @@ class UserControllerTest extends TestCase
         ]);
     }
 
-    public function testVisitarVideo()
-    {
-        $user = User::inRandomOrder()->first();
-        $video = Video::inRandomOrder()->first();
-
-        Visita::create([
-            'user_id' => $user->id,
-            'video_id' => $video->id,
-        ]);
-
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'usuario/' . $user->id . '/visita/' . $video->id);
-        $response->assertStatus(200);
-
-        $response->assertJson([
-            'message' => 'Visita registrada con éxito',
-        ]);
-    }
-
     public function testDarDeBajaUsuario()
     {
         $user = new User();
