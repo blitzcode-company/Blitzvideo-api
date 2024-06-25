@@ -53,7 +53,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
         
         Route::post('/{idVideo}/puntuar', [PuntuaController::class, 'puntuar']);
-        Route::post('/puntuar/{idPuntua}', [PuntuaController::class, 'editarPuntuacion']);
+      //  Route::post('/puntuar/{idPuntua}', [PuntuaController::class, 'editarPuntuacion']);
         Route::delete('/puntuar/{idPuntua}', [PuntuaController::class, 'bajaLogicaPuntuacion']);
     });
     Route::prefix('canal')->group(function () {

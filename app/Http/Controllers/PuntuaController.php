@@ -9,47 +9,53 @@ class PuntuaController extends Controller
 {
     public function puntuar(Request $request, $videoId)
     {
+        $this->validarSolicitud($request);
+
+        $userId = $request->input('user_id');
+        $valora = $request->input('valora');
+
+        $puntuacionExistente = $this->buscarPuntuacionExistente($userId, $videoId);
+
+        if ($puntuacionExistente) {
+            return $this->actualizarPuntuacion($puntuacionExistente, $valora);
+        } else {
+            return $this->crearPuntuacion($userId, $videoId, $valora);
+        }
+    }
+
+    private function validarSolicitud(Request $request)
+    {
         $this->validate($request, [
             'user_id' => 'required|integer|exists:users,id',
             'valora' => 'required|integer|min:1|max:5',
         ]);
-
-        $userId = $request->input('user_id');
-
-        $existingRating = Puntua::where('user_id', $userId)
-            ->where('video_id', $videoId)
-            ->first();
-
-        if (!$existingRating) {
-            Puntua::create([
-                'user_id' => $userId,
-                'video_id' => $videoId,
-                'valora' => $request->input('valora'),
-            ]);
-
-            return response()->json(['message' => 'Puntuación agregada exitosamente.'], 201);
-        }
-
-        return response()->json(['message' => 'Ya has puntuado este video.'], 422);
     }
 
-    public function editarPuntuacion(Request $request, $idPuntua)
+    private function buscarPuntuacionExistente($userId, $videoId)
     {
-        $this->validate($request, [
-            'valora' => 'required|integer|min:1|max:5',
+        return Puntua::where('user_id', $userId)
+            ->where('video_id', $videoId)
+            ->first();
+    }
+
+    private function actualizarPuntuacion($puntuacionExistente, $valora)
+    {
+        $puntuacionExistente->update([
+            'valora' => $valora,
         ]);
 
-        $puntua = Puntua::find($idPuntua);
+        return response()->json(['message' => 'Puntuación actualizada exitosamente.'], 200);
+    }
 
-        if ($puntua) {
-            $puntua->update([
-                'valora' => $request->input('valora'),
-            ]);
+    private function crearPuntuacion($userId, $videoId, $valora)
+    {
+        Puntua::create([
+            'user_id' => $userId,
+            'video_id' => $videoId,
+            'valora' => $valora,
+        ]);
 
-            return response()->json(['message' => 'Puntuación actualizada exitosamente.'], 200);
-        }
-
-        return response()->json(['message' => 'Puntuación no encontrada.'], 404);
+        return response()->json(['message' => 'Puntuación agregada exitosamente.'], 201);
     }
 
     public function bajaLogicaPuntuacion($idPuntua)

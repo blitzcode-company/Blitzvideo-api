@@ -28,7 +28,7 @@ class PuntuaControllerTest extends TestCase
         $this->assertDatabaseHas('puntua', ['user_id' => $usuario->id, 'video_id' => $video->id, 'valora' => 5]);
     }
 
-    public function testNoPuedePuntuarVideoDosVeces()
+    public function testPuedeActualizarPuntuacionExistente()
     {
         $usuario = User::first();
         $video = Video::first();
@@ -44,28 +44,9 @@ class PuntuaControllerTest extends TestCase
             'valora' => 5,
         ]);
 
-        $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
-        $response->assertJson(['message' => 'Ya has puntuado este video.']);
-    }
-
-    public function testPuedeEditarPuntuacion()
-    {
-        $usuario = User::first();
-        $video = Video::first();
-
-        $puntua = Puntua::create([
-            'user_id' => $usuario->id,
-            'video_id' => $video->id,
-            'valora' => 3,
-        ]);
-
-        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/puntuar/{$puntua->id}", [
-            'valora' => 5,
-        ]);
-
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Puntuación actualizada exitosamente.']);
-        $this->assertDatabaseHas('puntua', ['id' => $puntua->id, 'valora' => 5]);
+        $this->assertDatabaseHas('puntua', ['user_id' => $usuario->id, 'video_id' => $video->id, 'valora' => 5]);
     }
 
     public function testPuedeEliminarPuntuacion()
