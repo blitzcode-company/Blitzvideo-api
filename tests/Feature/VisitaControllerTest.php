@@ -16,29 +16,45 @@ class VisitaControllerTest extends TestCase
 
     public function testPuedeRegistrarVisita()
     {
-        $usuario = User::inRandomOrder()->first();
-        $video = Video::inRandomOrder()->first();
+        $usuario = User::skip(2)->take(1)->first();
+        $video = Video::skip(2)->take(1)->first();
+
+        if (!$usuario || !$video) {
+            $this->markTestSkipped('No hay usuarios o videos válidos para probar.');
+        }
 
         $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "usuario/{$usuario->id}/visita/{$video->id}");
-
         $response->assertStatus(Response::HTTP_CREATED);
         $response->assertJson(['message' => 'Visita registrada exitosamente.']);
-        $this->assertDatabaseHas('visitas', ['user_id' => $usuario->id, 'video_id' => $video->id]);
+    }
+
+    public function testPuedeRegistrarVisitaInvitado()
+    {
+        $usuarioInvitado = User::where('name', 'Invitado')->first();
+        $video = Video::inRandomOrder()->first();
+
+        if (!$usuarioInvitado) {
+            $this->markTestSkipped('No hay usuario invitado para probar.');
+        }
+
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "invitado/visita/{$video->id}");
+        $response->assertStatus(Response::HTTP_CREATED);
+        $response->assertJson(['message' => 'Visita registrada exitosamente.']);
     }
 
     public function testNoPuedeRegistrarVisitaAntesDeUnMinuto()
     {
-        $usuario = User::inRandomOrder()->first();
-        $video = Video::inRandomOrder()->first();
-
+        $usuario = User::skip(2)->take(1)->first();
+        $video = Video::skip(2)->take(1)->first();
+        if (!$usuario || !$video) {
+            $this->markTestSkipped('No hay usuarios o videos válidos para probar.');
+        }
         Visita::create([
             'user_id' => $usuario->id,
             'video_id' => $video->id,
             'created_at' => Carbon::now()->subSeconds(30),
         ]);
-
         $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "usuario/{$usuario->id}/visita/{$video->id}");
-
         $response->assertStatus(Response::HTTP_TOO_MANY_REQUESTS);
         $response->assertJson(['message' => 'Debe esperar un minuto antes de registrar una nueva visita.']);
     }

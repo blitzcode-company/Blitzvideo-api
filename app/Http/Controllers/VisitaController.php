@@ -2,28 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\Visita;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class VisitaController extends Controller
 {
-    public function visita($usuarioId, $videoId)
+    public function visita($videoId, $userId = null)
     {
-        $ultimaVisita = $this->obtenerUltimaVisita($usuarioId, $videoId);
+        if ($userId === null) {
+            $usuario = User::where('name', 'Invitado')->first();
+
+            if (!$usuario) {
+                return response()->json(['message' => 'Usuario Invitado no encontrado.'], 404);
+            }
+
+            $userId = $usuario->id;
+        }
+
+        $ultimaVisita = $this->obtenerUltimaVisita($userId, $videoId);
 
         if ($ultimaVisita && !$this->puedeRegistrarVisita($ultimaVisita)) {
             return response()->json(['message' => 'Debe esperar un minuto antes de registrar una nueva visita.'], 429);
         }
 
-        $this->crearVisita($usuarioId, $videoId);
+        $this->crearVisita($userId, $videoId);
 
         return response()->json(['message' => 'Visita registrada exitosamente.'], 201);
     }
 
-    private function obtenerUltimaVisita($usuarioId, $videoId)
+    private function obtenerUltimaVisita($userId, $videoId)
     {
-        return Visita::where('user_id', $usuarioId)
+        return Visita::where('user_id', $userId)
             ->where('video_id', $videoId)
             ->orderBy('created_at', 'desc')
             ->first();
@@ -35,10 +46,10 @@ class VisitaController extends Controller
         return Carbon::now()->greaterThanOrEqualTo($unMinutoDespues);
     }
 
-    private function crearVisita($usuarioId, $videoId)
+    private function crearVisita($userId, $videoId)
     {
         Visita::create([
-            'user_id' => $usuarioId,
+            'user_id' => $userId,
             'video_id' => $videoId,
         ]);
     }

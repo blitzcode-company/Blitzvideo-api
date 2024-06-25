@@ -3,10 +3,10 @@
 use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\VideoController;
 use App\Http\Controllers\MeGustaController;
 use App\Http\Controllers\PuntuaController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VisitaController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +15,9 @@ Route::get('/', function () {
 });
 
 Route::prefix('v1')->group(function () {
+    Route::prefix('invitado')->group(function () {
+        Route::get('/visita/{videoId}', [VisitaController::class, 'visita']);
+    });
     Route::prefix('usuario')->group(function () {
         Route::get('/', [UserController::class, 'listarUsuarios']);
         Route::get('/{id}', [UserController::class, 'mostrarUsuarioPorId']);
@@ -52,7 +55,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/comentarios/{idComentario}', [ComentarioController::class, 'bajaLogicaComentario']);
         Route::post('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'darMeGusta']);
         Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
-        
+
         Route::post('/{idVideo}/puntuar', [PuntuaController::class, 'puntuar']);
         Route::delete('/puntuar/{idPuntua}', [PuntuaController::class, 'bajaLogicaPuntuacion']);
     });
