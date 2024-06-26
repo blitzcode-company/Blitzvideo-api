@@ -9,27 +9,21 @@ use Illuminate\Http\Response;
 
 class VisitaController extends Controller
 {
-    public function visita($videoId, $userId = null)
+    public function registrarVisita($userId, $videoId)
     {
-        if ($userId === null) {
-            $usuario = User::where('name', 'Invitado')->first();
-
-            if (!$usuario) {
-                return response()->json(['message' => 'Usuario Invitado no encontrado.'], 404);
-            }
-
-            $userId = $usuario->id;
-        }
-
         $ultimaVisita = $this->obtenerUltimaVisita($userId, $videoId);
-
         if ($ultimaVisita && !$this->puedeRegistrarVisita($ultimaVisita)) {
             return response()->json(['message' => 'Debe esperar un minuto antes de registrar una nueva visita.'], 429);
         }
-
         $this->crearVisita($userId, $videoId);
-
         return response()->json(['message' => 'Visita registrada exitosamente.'], 201);
+    }
+    
+    public function registrarVisitaComoInvitado($videoId)
+    {
+        $usuario = User::where('name', 'Invitado')->first();
+        $userId = $usuario->id;
+        return $this->registrarVisita($userId, $videoId);
     }
 
     private function obtenerUltimaVisita($userId, $videoId)

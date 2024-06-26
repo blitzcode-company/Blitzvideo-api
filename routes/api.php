@@ -16,7 +16,7 @@ Route::get('/', function () {
 
 Route::prefix('v1')->group(function () {
     Route::prefix('invitado')->group(function () {
-        Route::get('/visita/{videoId}', [VisitaController::class, 'visita']);
+        Route::get('/visita/{videoId}', [VisitaController::class, 'registrarVisitaComoInvitado']);
     });
     Route::prefix('usuario')->group(function () {
         Route::get('/', [UserController::class, 'listarUsuarios']);
@@ -41,7 +41,7 @@ Route::prefix('v1')->group(function () {
 
 Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('usuario')->group(function () {
-        Route::get('{userId}/visita/{videoId}', [VisitaController::class, 'visita']);
+        Route::get('{userId}/visita/{videoId}', [VisitaController::class, 'registrarVisita']);
         Route::delete('{userId}', [UserController::class, 'darDeBajaUsuario']);
         Route::post('{userId}', [UserController::class, 'editarUsuario']);
     });

@@ -36,4 +36,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Canal::class);
     }
+
+    public function visitas()
+    {
+        return $this->hasMany(Visita::class);
+    }
 }
