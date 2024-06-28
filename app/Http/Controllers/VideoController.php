@@ -225,7 +225,7 @@ class VideoController extends Controller
     {
         $videos = Video::with([
             'canal:id,nombre,descripcion,user_id',
-            'canal.user:id,name,email',
+            'canal.user:id,name,foto,email',
             'etiquetas:id,nombre',
         ])
             ->withCount([
@@ -258,7 +258,7 @@ class VideoController extends Controller
     {
         $video = Video::with([
             'canal:id,nombre,descripcion,user_id',
-            'canal.user:id,name,email',
+            'canal.user:id,name,foto,email',
             'etiquetas:id,nombre',
         ])
             ->withCount([
@@ -289,7 +289,7 @@ class VideoController extends Controller
     {
         $videos = Video::with([
             'canal:id,nombre,descripcion,user_id',
-            'canal.user:id,name,email',
+            'canal.user:id,name,foto,email',
             'etiquetas:id,nombre',
         ])
             ->withCount([
