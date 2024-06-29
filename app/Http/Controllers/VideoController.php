@@ -13,7 +13,7 @@ class VideoController extends Controller
 {
     public function mostrarTodosLosVideos(Request $request)
     {
-        $videos = $this->obtenerVideosConRelaciones()->take(20);
+        $videos = $this->obtenerVideosConRelaciones();
         return response()->json($videos, 200);
     }
 
@@ -25,7 +25,7 @@ class VideoController extends Controller
 
     public function listarVideosPorNombre(Request $request, $nombre)
     {
-        $videos = $this->obtenerVideosPorNombre($nombre)->take(20);
+        $videos = $this->obtenerVideosPorNombre($nombre);
         return response()->json($videos, 200);
     }
 

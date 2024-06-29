@@ -17,40 +17,74 @@ class PuntuaControllerTest extends TestCase
     {
         $usuario = User::first();
         $video = Video::first();
-
-        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuar", [
+        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
             'user_id' => $usuario->id,
             'valora' => 5,
         ]);
-
-        $response->assertStatus(Response::HTTP_CREATED);
-        $response->assertJson(['message' => 'Puntuación agregada exitosamente.']);
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
         $this->assertDatabaseHas('puntua', ['user_id' => $usuario->id, 'video_id' => $video->id, 'valora' => 5]);
     }
 
-    public function testPuedeActualizarPuntuacionExistente()
+
+    public function testObtenerPuntuacionExistente()
     {
+        $videoId = 1;
+        $userId = 1;
+        $valoraInicial = 4;
+        $valoraActualizado = 5;
+    
+        Puntua::create([
+            'user_id' => $userId,
+            'video_id' => $videoId,
+            'valora' => $valoraInicial,
+        ]);
+    
+        Puntua::where('user_id', $userId)
+              ->where('video_id', $videoId)
+              ->update(['valora' => $valoraActualizado]);
+    
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$videoId}/puntuacion/{$userId}");
+    
+        $response->assertStatus(Response::HTTP_OK)
+                 ->assertJson(['valora' => $valoraActualizado, 'message' => 'Puntuación actual obtenida exitosamente.' ]);
+    
+        $this->assertDatabaseHas('puntua', ['user_id' => $userId,'video_id' => $videoId,'valora' => $valoraActualizado]);
+    }
+    public function testObtenerPuntuacionNoExistente() {
+        $videoId = 1;
+        $userId = 1;
+
+        Puntua::where('user_id', $userId)
+            ->where('video_id', $videoId)
+            ->forceDelete(); 
+
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$videoId}/puntuacion/{$userId}");
+        $response->assertStatus(Response::HTTP_NOT_FOUND);
+        $response->assertJson(['message' => 'El usuario no ha puntuado este video.']);
+    }
+
+    public function testPuedeActualizarPuntuacionExistente(){
         $usuario = User::first();
         $video = Video::first();
-
+    
         Puntua::create([
             'user_id' => $usuario->id,
             'video_id' => $video->id,
             'valora' => 4,
         ]);
-
-        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuar", [
+    
+        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
             'user_id' => $usuario->id,
             'valora' => 5,
         ]);
-
+    
         $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['message' => 'Puntuación actualizada exitosamente.']);
+        $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
         $this->assertDatabaseHas('puntua', ['user_id' => $usuario->id, 'video_id' => $video->id, 'valora' => 5]);
     }
 
-    public function testPuedeEliminarPuntuacion()
-    {
+    public function testPuedeEliminarPuntuacion(){
         $usuario = User::first();
         $video = Video::first();
 
@@ -60,17 +94,20 @@ class PuntuaControllerTest extends TestCase
             'valora' => 4,
         ]);
 
-        $response = $this->deleteJson(env('BLITZVIDEO_BASE_URL') . "videos/puntuar/{$puntua->id}");
+        $response = $this->deleteJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
+            'user_id' => $usuario->id,
+        ]);
 
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Puntuación eliminada exitosamente.']);
-        $this->assertSoftDeleted('puntua', ['id' => $puntua->id]);
+
+        $this->assertSoftDeleted('puntua', ['user_id' => $usuario->id,'video_id' => $video->id,]);
     }
 
-    public function testDevuelveErrorSiIntentaEliminarPuntuacionInexistente()
-    {
-        $response = $this->deleteJson(env('BLITZVIDEO_BASE_URL') . "videos/puntuar/999");
-
+    public function testDevuelveErrorSiIntentaEliminarPuntuacionInexistente(){
+        $response = $this->deleteJson(env('BLITZVIDEO_BASE_URL') . "videos/999/puntuacion", [
+            'user_id' => 999,
+        ]);
         $response->assertStatus(Response::HTTP_NOT_FOUND);
         $response->assertJson(['message' => 'Puntuación no encontrada.']);
     }

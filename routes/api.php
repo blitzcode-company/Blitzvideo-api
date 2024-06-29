@@ -56,8 +56,10 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'darMeGusta']);
         Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
 
-        Route::post('/{idVideo}/puntuar', [PuntuaController::class, 'puntuar']);
-        Route::delete('/puntuar/{idPuntua}', [PuntuaController::class, 'bajaLogicaPuntuacion']);
+        Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
+        Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
+        Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);
+
     });
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
