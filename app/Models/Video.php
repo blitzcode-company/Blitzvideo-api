@@ -43,4 +43,9 @@ class Video extends Model
         $promedio = $this->puntuaciones()->avg('valora');
         return round($promedio);
     }
+
+    public function getVisitasCountAttribute()
+    {
+        return $this->visitas()->count();
+    }
 }

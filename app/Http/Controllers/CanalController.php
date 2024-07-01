@@ -19,10 +19,39 @@ class CanalController extends Controller
     }
 
     public function listarVideosDeCanal($canalId)
-    {
-        $videos = Video::where('canal_id', $canalId)->get();
-        return response()->json($videos, 200);
-    }
+{
+    $videos = Video::where('canal_id', $canalId)
+        ->with([
+            'canal:id,nombre,descripcion,user_id',
+            'canal.user:id,name,foto,email',
+            'etiquetas:id,nombre',
+        ])
+        ->withCount([
+            'puntuaciones as puntuacion_1' => function ($query) {
+                $query->where('valora', 1);
+            },
+            'puntuaciones as puntuacion_2' => function ($query) {
+                $query->where('valora', 2);
+            },
+            'puntuaciones as puntuacion_3' => function ($query) {
+                $query->where('valora', 3);
+            },
+            'puntuaciones as puntuacion_4' => function ($query) {
+                $query->where('valora', 4);
+            },
+            'puntuaciones as puntuacion_5' => function ($query) {
+                $query->where('valora', 5);
+            },
+            'visitas',
+        ])->get();
+
+    $videos->each(function ($video) {
+        $video->promedio_puntuaciones = $video->puntuacion_promedio;
+    });
+
+    return response()->json($videos, 200);
+}
+
 
     public function crearCanal(Request $request, $userId)
     {
@@ -63,8 +92,9 @@ class CanalController extends Controller
             $userId = $canal->user_id;
             $folderPath = 'portadas/' . $userId;
             $rutaPortada = $portada->store($folderPath, 's3');
-            $urlPortada = Storage::disk('s3')->url($rutaPortada);
+            $urlPortada = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaPortada));
             $canal->portada = $urlPortada;
+
         }
     }
     
