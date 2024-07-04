@@ -22,7 +22,7 @@ class CanalController extends Controller
 {
     $videos = Video::where('canal_id', $canalId)
         ->with([
-            'canal:id,nombre,descripcion,user_id',
+            'canal:id,nombre,portada,descripcion,user_id',
             'canal.user:id,name,foto,email',
             'etiquetas:id,nombre',
         ])

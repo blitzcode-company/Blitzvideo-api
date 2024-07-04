@@ -9,41 +9,64 @@ class MeGustaController extends Controller
 {
     public function darMeGusta(Request $request, $idComentario)
     {
-        $this->validate($request, [
+        $request->validate([
             'usuario_id' => 'required|integer',
         ]);
 
         $userId = $request->input('usuario_id');
-        $existingLike = MeGusta::where('usuario_id', $userId)
-            ->where('comentario_id', $idComentario)
-            ->first();
-        if (!$existingLike) {
-            MeGusta::create([
-                'usuario_id' => $userId,
-                'comentario_id' => $idComentario,
-            ]);
-            return response()->json(['message' => 'Te ha gustado el comentario.'], 201);
+        $like = MeGusta::firstOrCreate([
+            'usuario_id' => $userId,
+            'comentario_id' => $idComentario,
+        ]);
+
+        if ($like->wasRecentlyCreated) {
+            return response()->json(['message' => 'Te ha gustado el comentario.', 'meGustaId' => $like->id], 201);
+        } else {
+            return response()->json(['message' => 'Ya le has dado Me Gusta a este comentario.'], 422);
         }
-        return response()->json(['message' => 'Ya le has dado Me Gusta a este comentario.'], 422);
     }
 
     public function quitarMeGusta(Request $request, $idMeGusta)
     {
-        $this->validate($request, [
+        $request->validate([
             'usuario_id' => 'required|integer',
         ]);
+
         $userId = $request->input('usuario_id');
         $like = MeGusta::find($idMeGusta);
 
+        if ($like && $like->usuario_id === $userId) {
+            $like->delete();
+            return response()->json(['message' => 'Se ha quitado el Me Gusta del comentario.'], 200);
+        }
+
         if ($like) {
-            if ($like->usuario_id === $userId) {
-                $like->delete();
-                return response()->json(['message' => 'Se ha quitado el Me Gusta del comentario.'], 200);
-            } else {
-                return response()->json(['message' => 'No puedes quitar el Me Gusta de otro usuario.'], 403);
-            }
-        } else {
             return response()->json(['message' => 'No has dado Me Gusta a este comentario.'], 404);
         }
+
+        return response()->json(['message' => 'Me Gusta no encontrado.'], 404);
     }
+    
+    public function obtenerEstadoMeGusta($idComentario, Request $request)
+    {
+        $userId = $request->query('userId'); 
+
+        if (!$userId) {
+            return response()->json(['error' => 'ID de usuario no proporcionado.'], 400);
+        }
+
+        $likedByUser = MeGusta::where('comentario_id', $idComentario)
+            ->where('usuario_id', $userId)
+            ->exists();
+
+        $meGustaId = MeGusta::where('comentario_id', $idComentario)
+            ->where('usuario_id', $userId)
+            ->value('id');
+
+        return response()->json([
+            'likedByUser' => $likedByUser,
+            'meGustaId' => $meGustaId,
+        ]);
+    }
+
 }

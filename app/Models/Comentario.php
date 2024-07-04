@@ -35,4 +35,14 @@ class Comentario extends Model
     {
         return $this->belongsTo(Comentario::class, 'respuesta_id');
     }
+
+        public function likes()
+    {
+        return $this->hasMany(MeGusta::class);
+    }
+
+    public function likedByUser($userId)
+    {
+        return $this->likes()->where('usuario_id', $userId)->exists();
+    }
 }

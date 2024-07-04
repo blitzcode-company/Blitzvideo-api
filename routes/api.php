@@ -55,6 +55,8 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/comentarios/{idComentario}', [ComentarioController::class, 'bajaLogicaComentario']);
         Route::post('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'darMeGusta']);
         Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
+        Route::get('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'obtenerEstadoMeGusta']);
+
 
         Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);

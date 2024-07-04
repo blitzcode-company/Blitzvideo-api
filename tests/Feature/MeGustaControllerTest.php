@@ -105,6 +105,61 @@ class MeGustaControllerTest extends TestCase
         ]);
     
         $response->assertStatus(Response::HTTP_NOT_FOUND);
-        $response->assertJson(['message' => 'No has dado Me Gusta a este comentario.']);
-    }    
+        $response->assertJson(['message' => 'Me Gusta no encontrado.']);
+    }
+    
+    public function testDarMeGustaSinUsuarioId()
+    {
+    $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . 'videos/comentarios/1/me-gusta', []);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors('usuario_id');
+    }
+
+    public function testNoPuedeQuitarMeGustaConUsuarioIdIncorrecto()
+    {
+    $usuario = User::first();
+    $video = Video::first();
+    $comentario = Comentario::create([
+        'video_id' => $video->id,
+        'usuario_id' => $usuario->id,
+        'mensaje' => 'Comentario de prueba',
+    ]);
+
+    $like = MeGusta::create([
+        'usuario_id' => $usuario->id,
+        'comentario_id' => $comentario->id,
+    ]);
+
+    $response = $this->deleteJson(env('BLITZVIDEO_BASE_URL') . 'videos/comentarios/me-gusta/' . $like->id, [
+        'usuario_id' => $usuario->id + 1, 
+        
+    ]);
+
+    $response->assertStatus(404);
+    $response->assertJson(['message' => 'No has dado Me Gusta a este comentario.']);
+    }
+
+    public function testObtenerEstadoMeGusta()
+    {
+        $usuario = User::first();
+        $video = Video::first();
+        $comentario = Comentario::create([
+            'video_id' => $video->id,
+            'usuario_id' => $usuario->id,
+            'mensaje' => 'Comentario de prueba',
+        ]);
+
+        MeGusta::create([
+            'usuario_id' => $usuario->id,
+            'comentario_id' => $comentario->id,
+        ]);
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . 'videos/comentarios/' . $comentario->id . '/me-gusta?userId=' . $usuario->id);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'likedByUser' => true,
+            'meGustaId' => MeGusta::where('comentario_id', $comentario->id)->where('usuario_id', $usuario->id)->value('id'),
+        ]);
+    }
 }
