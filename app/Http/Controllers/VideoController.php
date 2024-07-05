@@ -125,7 +125,7 @@ class VideoController extends Controller
 
     private function generarUrl($ruta)
     {
-        return str_replace('minio', 'localhost', Storage::disk('s3')->url($ruta));
+        return str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($ruta));
     }
 
     private function generarMiniatura($videoFile, $canalId)

@@ -92,7 +92,7 @@ class CanalController extends Controller
             $userId = $canal->user_id;
             $folderPath = 'portadas/' . $userId;
             $rutaPortada = $portada->store($folderPath, 's3');
-            $urlPortada = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaPortada));
+            $urlPortada = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaPortada));
             $canal->portada = $urlPortada;
 
         }

@@ -49,7 +49,7 @@ class UserController extends Controller
                 $foto = $request->file('foto');
                 $folderPath = 'perfil/' . $userId;
                 $rutaFoto = $foto->store($folderPath, 's3');
-                $urlFoto = str_replace('minio', 'localhost', Storage::disk('s3')->url($rutaFoto));
+                $urlFoto = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaFoto));
                 
                 $usuario->foto = $urlFoto;
             }
