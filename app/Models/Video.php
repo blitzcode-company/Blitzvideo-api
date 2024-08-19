@@ -15,7 +15,7 @@ class Video extends Model
         'link',
         'activo',
         'canal_id',
-        'miniatura'
+        'miniatura',
     ];
 
     public function canal()
@@ -47,5 +47,10 @@ class Video extends Model
     public function getVisitasCountAttribute()
     {
         return $this->visitas()->count();
+    }
+
+    public function playlists()
+    {
+        return $this->belongsToMany(Playlist::class, 'video_lista');
     }
 }
