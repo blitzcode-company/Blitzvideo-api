@@ -68,6 +68,7 @@ class ComentarioController extends Controller
             'usuario_id' => 'required|integer',
         ]);
         $comentario = Comentario::where('id', $idComentario)->first();
+        
         if (!$comentario) {
             return response()->json(['error' => 'El comentario no existe.'], 404);
         }

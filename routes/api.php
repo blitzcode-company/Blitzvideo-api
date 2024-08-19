@@ -40,6 +40,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idEtiqueta}/videos', [EtiquetaController::class, 'listarVideosPorEtiqueta']);
         Route::get('/{etiquetaId}/canal/{canalId}/videos', [EtiquetaController::class, 'filtrarVideosPorEtiquetaYCanal']);
     });
+    Route::prefix('playlists')->group(function() {
+        Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
+    });
 });
 
 Route::prefix('v1')->middleware('auth.api')->group(function () {
@@ -65,6 +68,14 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/playlist/{id}', [PlaylistController::class, 'CrearPlaylist']);
 
     });
+    Route::prefix('playlists')->group(function() {
+        Route::post('/', [PlaylistController::class, 'CrearPlaylist']);
+        Route::post('/{playlistId}/videos', [PlaylistController::class, 'AgregarVideosAPlaylist']);
+        Route::delete('/{playlistId}/videos', [PlaylistController::class, 'QuitarVideoDePlaylist']);
+        Route::put('/{playlistId}', [PlaylistController::class, 'ModificarPlaylist']);
+        Route::delete('/{playlistId}', [PlaylistController::class, 'BorrarPlaylist']);
+    });
+    
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
         Route::delete('/{canalId}', [CanalController::class, 'darDeBajaCanal']);
