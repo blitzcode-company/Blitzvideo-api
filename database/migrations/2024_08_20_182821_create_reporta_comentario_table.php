@@ -4,21 +4,21 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateReportasTable extends Migration
+class CreateReportaComentarioTable extends Migration
 {
     public function up()
     {
-        Schema::create('reporta', function (Blueprint $table) {
+        Schema::create('reporta_comentario', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('video_id')->constrained()->onDelete('cascade');
+            $table->foreignId('comentario_id')->constrained()->onDelete('cascade');
             $table->text('detalle')->nullable();
-            $table->boolean('contenido_inapropiado')->default(false);
+            $table->boolean('lenguaje_ofensivo')->default(false);
             $table->boolean('spam')->default(false);
             $table->boolean('contenido_enganoso')->default(false);
-            $table->boolean('violacion_derechos_autor')->default(false);
             $table->boolean('incitacion_al_odio')->default(false);
-            $table->boolean('violencia_grafica')->default(false);
+            $table->boolean('acoso')->default(false);
+            $table->boolean('contenido_sexual')->default(false);
             $table->boolean('otros')->default(false);
             $table->softDeletes(); 
             $table->timestamps();
@@ -27,6 +27,6 @@ class CreateReportasTable extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('reporta');
+        Schema::dropIfExists('reporta_comentario');
     }
 }

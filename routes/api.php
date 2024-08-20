@@ -4,14 +4,14 @@ use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
+use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VisitaController;
-use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\ReportaController;
+use App\Http\Controllers\ReportaComentarioController; 
 use Illuminate\Support\Facades\Route;
-
 
 Route::get('/', function () {
     return view('welcome');
@@ -30,7 +30,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
         Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
-    
+
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
@@ -41,7 +41,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idEtiqueta}/videos', [EtiquetaController::class, 'listarVideosPorEtiqueta']);
         Route::get('/{etiquetaId}/canal/{canalId}/videos', [EtiquetaController::class, 'filtrarVideosPorEtiquetaYCanal']);
     });
-    Route::prefix('playlists')->group(function() {
+    Route::prefix('playlists')->group(function () {
         Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
     });
 });
@@ -67,14 +67,14 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
         Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);
     });
-    Route::prefix('playlists')->group(function() {
+    Route::prefix('playlists')->group(function () {
         Route::post('/', [PlaylistController::class, 'CrearPlaylist']);
         Route::post('/{playlistId}/videos', [PlaylistController::class, 'AgregarVideosAPlaylist']);
         Route::delete('/{playlistId}/videos', [PlaylistController::class, 'QuitarVideoDePlaylist']);
         Route::put('/{playlistId}', [PlaylistController::class, 'ModificarPlaylist']);
         Route::delete('/{playlistId}', [PlaylistController::class, 'BorrarPlaylist']);
     });
-    
+
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
         Route::delete('/{canalId}', [CanalController::class, 'darDeBajaCanal']);
@@ -90,5 +90,13 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::put('/{reporteId}', [ReportaController::class, 'ModificarReporte']);
         Route::delete('/{reporteId}', [ReportaController::class, 'BorrarReporte']);
         Route::delete('/video/{videoId}', [ReportaController::class, 'BorrarReportesDeVideo']);
+
+        Route::post('/comentario', [ReportaComentarioController::class, 'CrearReporte']);
+        Route::get('/comentario', [ReportaComentarioController::class, 'ListarReportes']);
+        Route::get('/comentario/{comentarioId}', [ReportaComentarioController::class, 'ListarReportesDeComentario']);
+        Route::get('/comentario/usuario/{userId}', [ReportaComentarioController::class, 'ListarReportesDeUsuario']);
+        Route::put('/{reporteId}/comentario', [ReportaComentarioController::class, 'ModificarReporte']);
+        Route::delete('/{reporteId}/comentario', [ReportaComentarioController::class, 'BorrarReporte']);
+        Route::delete('/comentario/{comentarioId}', [ReportaComentarioController::class, 'BorrarReportesDeComentario']);
     });
 });

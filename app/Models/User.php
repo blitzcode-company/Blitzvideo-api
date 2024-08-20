@@ -44,4 +44,8 @@ class User extends Authenticatable
         return $this->hasMany(Playlist::class);
     }
 
+    public function reportaComentarios()
+    {
+        return $this->hasMany(ReportaComentario::class);
+    }
 }

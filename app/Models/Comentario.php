@@ -36,7 +36,7 @@ class Comentario extends Model
         return $this->belongsTo(Comentario::class, 'respuesta_id');
     }
 
-        public function likes()
+    public function likes()
     {
         return $this->hasMany(MeGusta::class);
     }
@@ -45,4 +45,10 @@ class Comentario extends Model
     {
         return $this->likes()->where('usuario_id', $userId)->exists();
     }
+
+    public function reportes()
+    {
+        return $this->hasMany(ReportaComentario::class);
+    }
+
 }
