@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VisitaController;
 use App\Http\Controllers\PlaylistController;
+use App\Http\Controllers\ReportaController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -65,8 +66,6 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
         Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);
-        Route::post('/playlist/{id}', [PlaylistController::class, 'CrearPlaylist']);
-
     });
     Route::prefix('playlists')->group(function() {
         Route::post('/', [PlaylistController::class, 'CrearPlaylist']);
@@ -82,5 +81,14 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     });
     Route::prefix('etiquetas')->group(function () {
         Route::post('/videos/{idVideo}', [EtiquetaController::class, 'asignarEtiquetas']);
+    });
+    Route::prefix('reporte')->group(function () {
+        Route::post('/', [ReportaController::class, 'CrearReporte']);
+        Route::get('/', [ReportaController::class, 'ListarReportes']);
+        Route::get('/video/{videoId}', [ReportaController::class, 'ListarReportesDeVideo']);
+        Route::get('/usuario/{userId}', [ReportaController::class, 'ListarReportesDeUsuario']);
+        Route::put('/{reporteId}', [ReportaController::class, 'ModificarReporte']);
+        Route::delete('/{reporteId}', [ReportaController::class, 'BorrarReporte']);
+        Route::delete('/video/{videoId}', [ReportaController::class, 'BorrarReportesDeVideo']);
     });
 });

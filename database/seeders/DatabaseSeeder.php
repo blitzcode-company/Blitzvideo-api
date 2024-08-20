@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             CanalSeeder::class,
             EtiquetaSeeder::class,
             VideoSeeder::class,
+            ReportesSeeder::class
         ]);
     }
 }
