@@ -21,4 +21,9 @@ class Canal extends Model
     {
         return $this->hasMany(Video::class);
     }
+
+    public function suscriptores()
+    {
+        return $this->belongsToMany(User::class, 'suscribe')->withTimestamps()->withTrashed();
+    }
 }

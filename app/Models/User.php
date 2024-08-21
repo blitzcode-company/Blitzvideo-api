@@ -48,4 +48,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(ReportaComentario::class);
     }
+
+    public function canalesSuscritos()
+    {
+        return $this->belongsToMany(Canal::class, 'suscribe')->withTimestamps()->withTrashed();
+    }
+
 }

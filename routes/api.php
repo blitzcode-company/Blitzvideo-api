@@ -6,11 +6,12 @@ use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\PuntuaController;
+use App\Http\Controllers\ReportaComentarioController;
+use App\Http\Controllers\ReportaController;
+use App\Http\Controllers\SuscribeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VisitaController;
-use App\Http\Controllers\ReportaController;
-use App\Http\Controllers\ReportaComentarioController; 
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -35,6 +36,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
         Route::get('/usuario', [CanalController::class, 'listarCanales']);
+        Route::get('/suscripciones', [SuscribeController::class, 'ListarSuscripciones']);
+        Route::get('/usuario/{userId}/suscripciones', [SuscribeController::class, 'ListarSuscripcionesUsuario']);
     });
     Route::prefix('etiquetas')->group(function () {
         Route::get('/', [EtiquetaController::class, 'listarEtiquetas']);
@@ -78,6 +81,8 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
         Route::delete('/{canalId}', [CanalController::class, 'darDeBajaCanal']);
+        Route::post('/{canal_id}/suscripcion', [SuscribeController::class, 'Suscribirse']);
+        Route::delete('/{canal_id}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
     });
     Route::prefix('etiquetas')->group(function () {
         Route::post('/videos/{idVideo}', [EtiquetaController::class, 'asignarEtiquetas']);

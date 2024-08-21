@@ -16,7 +16,8 @@ class DatabaseSeeder extends Seeder
             VideoSeeder::class,
             ReportesSeeder::class,
             ComentarioSeeder::class,
-            ReportesComentarioSeeder::class
+            ReportesComentarioSeeder::class,
+            SuscribeSeeder::class
         ]);
     }
 }
