@@ -16,6 +16,7 @@ class Video extends Model
         'activo',
         'canal_id',
         'miniatura',
+        'estado',
     ];
 
     public function canal()

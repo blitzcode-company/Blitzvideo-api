@@ -80,6 +80,15 @@ class VideoController extends Controller
         return response()->json(['message' => 'Video dado de baja correctamente'], 200);
     }
 
+    public function bloquearVideo($idVideo) {
+
+        $video = Video::findOrFAil($idVideo);
+        $video->estado = 'bloqueado';
+        $video->save();
+        return response()->json(['message' => 'Video bloqueado con exito'], 200);
+
+    }
+
     private function validarRequest($request, $rules)
     {
         $request->validate($rules);

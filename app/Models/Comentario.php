@@ -14,6 +14,7 @@ class Comentario extends Model
         'video_id',
         'respuesta_id',
         'mensaje',
+        'estado',
     ];
 
     protected $casts = [
