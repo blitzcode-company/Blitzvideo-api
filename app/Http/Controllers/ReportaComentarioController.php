@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\ReportaComentario;
 use App\Models\Comentario;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
+
 
 class ReportaComentarioController extends Controller
 {
