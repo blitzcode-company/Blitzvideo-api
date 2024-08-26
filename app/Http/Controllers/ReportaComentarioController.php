@@ -26,8 +26,6 @@ class ReportaComentarioController extends Controller
 
         $reporte = ReportaComentario::create($validatedData);
 
-        $this->enviarReporteAModeradores($reporte);
-
         return response()->json([
             'message' => 'Reporte de comentario creado exitosamente.',
             'reporte' => $reporte
@@ -106,28 +104,5 @@ class ReportaComentarioController extends Controller
         ], 200);
     }
 
-    private function enviarReporteAModeradores($reporte)
-    {
-        $baseUrl = config('services.moderadores.url');
-
-        $url = "{$baseUrl}/moderacion/comentario/reportes";
-
-
-        $response = Http::post($url, [
-            'user_id' => $reporte->user_id,
-            'comentario_id' => $reporte->comentario_id,
-            'detalle' => $reporte->detalle,
-            'lenguaje_ofensivo' => $reporte->lenguaje_ofensivo,
-            'spam' =>  $reporte->spam,
-            'contenido_enganoso' =>  $reporte->contenido_enganoso,
-            'incitacion_al_odio' =>  $reporte->incitacion_al_odio,
-            'acoso' =>  $reporte->acoso,
-            'contenido_sexual' =>  $reporte->contenido_sexual,
-            'otros' =>  $reporte->otros,
-        ]);
-
-        if ($response->failed()) {
-            \Log::error('Error al enviar el reporte a la API de moderadores', ['response' => $response->body()]);
-        }
-    }
+   
 }
