@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Reporta;
 use App\Models\Video;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
+
+
 
 class ReportaController extends Controller
 {
@@ -25,6 +28,9 @@ class ReportaController extends Controller
         ]);
 
         $reporte = Reporta::create($validatedData);
+
+        $this->enviarReporteAModeradores($reporte);
+
 
         return response()->json([
             'message' => 'Reporte creado exitosamente.',
@@ -102,5 +108,31 @@ class ReportaController extends Controller
         return response()->json([
             'message' => 'Todos los reportes del video han sido borrados exitosamente.'
         ], 200);
+    }
+
+
+    private function enviarReporteAModeradores($reporte)
+    {
+        $baseUrl = config('services.moderadores.url');
+
+        $url = "{$baseUrl}/moderacion/videos/reportes";
+
+
+        $response = Http::post($url, [
+            'user_id' => $reporte->user_id,
+            'video_id' => $reporte->video_id,
+            'detalle' => $reporte->detalle,
+            'contenido_inapropiado' => $reporte->contenido_inapropiado,
+            'spam' => $reporte->spam,
+            'contenido_enganoso' => $reporte->contenido_enganoso,
+            'violacion_derechos_autor' => $reporte->violacion_derechos_autor,
+            'incitacion_al_odio' => $reporte->incitacion_al_odio,
+            'violencia_grafica' => $reporte->violencia_grafica,
+            'otros' => $reporte->otros,
+        ]);
+
+        if ($response->failed()) {
+            \Log::error('Error al enviar el reporte a la API de moderadores', ['response' => $response->body()]);
+        }
     }
 }
