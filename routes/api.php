@@ -46,6 +46,7 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('playlists')->group(function () {
         Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
+        Route::get('/{playlistId}', [PlaylistController::class, 'ObtenerPlaylistConVideos']);
     });
 });
 

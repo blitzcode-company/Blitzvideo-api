@@ -96,7 +96,40 @@ class PlaylistControllerTest extends TestCase
             'video_id' => $video->id,
         ]);
     }
-
+    public function testPuedeObtenerPlaylistConVideos()
+    {
+        $user = User::first();
+    
+        $playlist = Playlist::create([
+            'nombre' => 'Playlist para Prueba',
+            'acceso' => true,
+            'user_id' => $user->id,
+        ]);
+        $videos = Video::take(3)->get(); 
+        $playlist->videos()->attach($videos->pluck('id')); 
+    
+        $response = $this->getJson("/api/v1/playlists/{$playlist->id}");
+    
+        $response->assertStatus(Response::HTTP_OK);
+    
+        $response->assertJson([
+            'playlist' => [
+                'id' => $playlist->id,
+                'nombre' => $playlist->nombre,
+                'acceso' => $playlist->acceso,
+                'user_id' => $playlist->user_id,
+            ],
+            'videos' => $videos->map(function ($video) {
+                return [
+                    'id' => $video->id,
+                    'titulo' => $video->titulo,
+                    'descripcion' => $video->descripcion,
+                    'miniatura' => $video->miniatura,
+                    'link' => $video->link,
+                ];
+            })->toArray(),
+        ]);
+    }
     public function testPuedeBorrarPlaylist()
     {
         $playlist = Playlist::create([

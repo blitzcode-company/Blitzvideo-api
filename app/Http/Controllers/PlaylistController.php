@@ -15,6 +15,7 @@ class PlaylistController extends Controller
             'nombre' => 'required|string|max:255',
             'acceso' => 'required|boolean',
             'user_id' => 'required|exists:users,id',
+            'video_id' => 'nullable|exists:videos,id',
         ]);
     
         $playlist = Playlist::create([
@@ -22,12 +23,17 @@ class PlaylistController extends Controller
             'acceso' => $validatedData['acceso'],
             'user_id' => $validatedData['user_id'],
         ]);
+
+        if (!empty($validatedData['video_id'])) {
+            $playlist->videos()->attach($validatedData['video_id']);
+        }
     
         return response()->json([
             'message' => 'Playlist creada exitosamente.',
         ], 201);
     }
     
+
 
     public function AgregarVideosAPlaylist(Request $request, $playlistId)
     {
@@ -99,6 +105,16 @@ class PlaylistController extends Controller
         return response()->json([
             'message' => 'Playlist modificada exitosamente.',
             'playlist' => $playlist
+        ], 200);
+    }
+
+    public function ObtenerPlaylistConVideos($playlistId)
+    {
+        $playlist = Playlist::with('videos')->findOrFail($playlistId);
+    
+        return response()->json([
+            'playlist' => $playlist,
+            'videos' => $playlist->videos,
         ], 200);
     }
 
