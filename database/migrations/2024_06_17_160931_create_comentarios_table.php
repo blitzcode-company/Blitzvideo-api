@@ -14,7 +14,7 @@ class CreateComentariosTable extends Migration
             $table->foreignId('video_id')->constrained('videos')->onDelete('cascade');
             $table->unsignedBigInteger('respuesta_id')->nullable();
             $table->text('mensaje');
-            $table->string('estado')->nullable();
+            $table->boolean('bloqueado')->default(false);
             $table->timestamps();
             $table->softDeletes();
             $table->foreign('respuesta_id')->references('id')->on('comentarios')->onDelete('cascade');

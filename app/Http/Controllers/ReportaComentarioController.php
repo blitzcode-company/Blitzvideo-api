@@ -8,7 +8,6 @@ use App\Models\Comentario;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 
-
 class ReportaComentarioController extends Controller
 {
     public function CrearReporte(Request $request)
@@ -32,31 +31,6 @@ class ReportaComentarioController extends Controller
             'message' => 'Reporte de comentario creado exitosamente.',
             'reporte' => $reporte
         ], 201);
-    }
-
-    public function ValidarReporte(Request $request, $reporteId)
-    {
-        $validatedData = $request->validate([
-            'accion' => 'required|string|in:bloquear,desbloquear',
-        ]);
-
-        $reporte = Reporta::findOrFail($reporteId);
-        $comentario = Comentario::findOrFail($reporte->comentario_id);
-
-        $acciones = [
-            'bloquear' => fn() => $comentario->update(['estado' => 'bloqueado']),
-            'desbloquear' => fn() => $comentario->update(['estado' => 'desbloqueado']),
-        ];
-
-        if (array_key_exists($validatedData['accion'], $acciones)) {
-            $acciones[$validatedData['accion']]();
-            return response()->json([
-                'message' => 'Acción realizada exitosamente.',
-                'comentario' => $comentario
-            ], 200);
-        }
-
-        return response()->json(['message' => 'Acción no válida.'], 400);
     }
 
     public function ListarReportes()
@@ -130,6 +104,4 @@ class ReportaComentarioController extends Controller
             'message' => 'Todos los reportes del comentario han sido borrados exitosamente.'
         ], 200);
     }
-
-   
 }
