@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Puntua;
+use App\Models\Playlist;
 use Illuminate\Http\Request;
 
 class PuntuaController extends Controller
@@ -15,7 +16,21 @@ class PuntuaController extends Controller
             ['user_id' => $userId, 'video_id' => $idVideo],
             ['valora' => $valora]
         );
+
+        if ($valora === 5) {
+            $playlistDeFavoritos = Playlist::firstOrCreate(
+                ['nombre' => 'Favoritos', 'user_id' => $userId],
+                ['acceso' => true]
+            );
     
+            if ($playlistDeFavoritos->videos()->where('video_id', $idVideo)->exists()) {
+                $playlistDeFavoritos->videos()->detach($idVideo);  
+                return response()->json(['message' => 'Video eliminado de la playlist "Favoritos".'], 200);
+            }
+    
+            $playlistDeFavoritos->videos()->attach($idVideo);
+        }
+
         return response()->json(['message' => 'Puntuación agregada o actualizada exitosamente.'], 200);
     }
 

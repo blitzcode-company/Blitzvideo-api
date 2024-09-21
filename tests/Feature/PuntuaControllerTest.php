@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Puntua;
 use App\Models\User;
 use App\Models\Video;
+use App\Models\PLaylist;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Illuminate\Http\Response;
 use Tests\TestCase;
@@ -64,25 +65,36 @@ class PuntuaControllerTest extends TestCase
         $response->assertJson(['message' => 'El usuario no ha puntuado este video.']);
     }
 
-    public function testPuedeActualizarPuntuacionExistente(){
-        $usuario = User::first();
-        $video = Video::first();
+    public function testPuedeActualizarPuntuacionExistente()
+{
+    $usuario = User::first();
+    $video = Video::first();
     
-        Puntua::create([
-            'user_id' => $usuario->id,
-            'video_id' => $video->id,
-            'valora' => 4,
-        ]);
-    
-        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
-            'user_id' => $usuario->id,
-            'valora' => 5,
-        ]);
-    
-        $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
-        $this->assertDatabaseHas('puntua', ['user_id' => $usuario->id, 'video_id' => $video->id, 'valora' => 5]);
+    $playlistDeFavoritos = Playlist::where('nombre', 'Favoritos')->where('user_id', $usuario->id)->first();
+
+    if ($playlistDeFavoritos) {
+        $playlistDeFavoritos->videos()->detach($video->id);
     }
+
+    Puntua::create([
+        'user_id' => $usuario->id,
+        'video_id' => $video->id,
+        'valora' => 4,
+    ]);
+    
+    $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
+        'user_id' => $usuario->id,
+        'valora' => 5,
+    ]);
+
+    $response->assertStatus(Response::HTTP_OK);
+
+    $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
+
+    $this->assertDatabaseHas('puntua', ['user_id' => $usuario->id, 'video_id' => $video->id, 'valora' => 5]);
+
+    $this->assertDatabaseHas('video_lista', ['playlist_id' => $playlistDeFavoritos->id, 'video_id' => $video->id]);
+}
 
     public function testPuedeEliminarPuntuacion(){
         $usuario = User::first();
@@ -111,4 +123,7 @@ class PuntuaControllerTest extends TestCase
         $response->assertStatus(Response::HTTP_NOT_FOUND);
         $response->assertJson(['message' => 'Puntuación no encontrada.']);
     }
+
+  
+
 }
