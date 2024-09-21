@@ -13,10 +13,10 @@ class Video extends Model
         'titulo',
         'descripcion',
         'link',
-        'activo',
         'canal_id',
         'miniatura',
-        'estado',
+        'bloqueado', 
+        'acceso',      
     ];
 
     public function canal()

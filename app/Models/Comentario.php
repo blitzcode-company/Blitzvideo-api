@@ -14,12 +14,13 @@ class Comentario extends Model
         'video_id',
         'respuesta_id',
         'mensaje',
-        'estado',
+        'bloqueado',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'bloqueado' => 'boolean',
     ];
 
     public function user()
