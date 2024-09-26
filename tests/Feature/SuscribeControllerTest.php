@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Illuminate\Http\Response;
 use Tests\TestCase;
+use App\Models\Suscribe;
 
 class SuscribeControllerTest extends TestCase
 {
@@ -89,5 +90,56 @@ class SuscribeControllerTest extends TestCase
 
         $response->assertStatus(Response::HTTP_NOT_FOUND);
         $response->assertJson(['message' => 'Este usuario no tiene suscripciones.']);
+    }
+
+
+    public function testUsuarioEstaSuscrito()
+    {
+        Suscribe::create([
+            'user_id' => 2,
+            'canal_id' => 1,
+        ]);
+    
+        $response = $this->postJson($this->baseUrl() . '/1/suscripcion', [
+            'user_id' => 2,
+        ]);
+    
+        $response->assertStatus(Response::HTTP_CONFLICT);
+        $response->assertJson([
+            'message' => 'Ya estás suscrito a este canal.',
+        ]);
+    }
+    public function testUsuarioNoEstaSuscrito()
+    {
+        $response = $this->postJson($this->baseUrl() . '/1/suscripcion', [
+            'user_id' => 10, 
+        ]);
+    
+        $response->assertStatus(Response::HTTP_CREATED);
+    
+        $response->assertJson([
+            'data' => [
+                'user_id' => 10,
+                'canal_id' => '1',
+            ]
+        ]);
+    }
+
+    public function testValidacionFallaSinUserId()
+    {
+        $response = $this->postJson($this->baseUrl() . '/1/suscripcion', []);
+
+        $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $response->assertJsonValidationErrors(['user_id']);
+    }
+
+    public function testValidacionFallaConUserIdInvalido()
+    {
+        $response = $this->postJson($this->baseUrl() . '/1/suscripcion', [
+            'user_id' => 999, 
+        ]);
+
+        $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $response->assertJsonValidationErrors(['user_id']);
     }
 }
