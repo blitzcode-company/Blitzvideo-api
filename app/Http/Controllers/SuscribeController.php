@@ -32,7 +32,6 @@ class SuscribeController extends Controller
             'data' => $suscribe,
         ], 201);
     }
-
     public function AnularSuscripcion(Request $request, $canal_id)
     {
         $request->validate([
@@ -52,6 +51,19 @@ class SuscribeController extends Controller
         $suscribe->delete();
 
         return response()->json([], 200);
+    }
+
+    public function VerificarSuscripcion(Request $request, $canal_id)
+    {
+    $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    $suscripcionExistente = Suscribe::where('user_id', $request->user_id)
+        ->where('canal_id', $canal_id)
+        ->exists();
+
+    return response()->json(['suscrito' => $suscripcionExistente], 200);
     }
 
     public function ListarSuscripciones()

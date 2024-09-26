@@ -83,7 +83,11 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('canal')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
         Route::delete('/{canalId}', [CanalController::class, 'darDeBajaCanal']);
-        Route::post('/{canal_id}/suscripcion', [SuscribeController::class, 'Suscribirse']);
+        Route::post('/{canalId}/suscripcion', [SuscribeController::class, 'Suscribirse']);
+        Route::delete('/{canalId}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
+
+        Route::get('/{canal_id}/suscripcion', [SuscribeController::class, 'VerificarSuscripcion']);
+
         Route::delete('/{canal_id}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
     });
     Route::prefix('etiquetas')->group(function () {

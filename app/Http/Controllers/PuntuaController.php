@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Puntua;
 use App\Models\Playlist;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
 
 class PuntuaController extends Controller
 {
@@ -33,6 +35,7 @@ class PuntuaController extends Controller
 
         return response()->json(['message' => 'Puntuación agregada o actualizada exitosamente.'], 200);
     }
+    
 
     public function obtenerPuntuacionActual($idVideo, $userId)
     {

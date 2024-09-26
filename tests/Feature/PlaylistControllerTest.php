@@ -183,14 +183,12 @@ class PlaylistControllerTest extends TestCase
         $usuario = User::first();
         $video = Video::first();
     
-        // Crear una puntuación inicial de 4
         Puntua::create([
             'user_id' => $usuario->id,
             'video_id' => $video->id,
             'valora' => 4,
         ]);
         
-        // Actualizar la puntuación a 5, lo que debería agregar el video a "Favoritos"
         $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
             'user_id' => $usuario->id,
             'valora' => 5,
@@ -199,7 +197,6 @@ class PlaylistControllerTest extends TestCase
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
     
-        // Verificar que el video está en la playlist "Favoritos"
         $this->assertDatabaseHas('video_lista', [
             'playlist_id' => Playlist::where('nombre', 'Favoritos')->where('user_id', $usuario->id)->first()->id,
             'video_id' => $video->id,
@@ -211,18 +208,15 @@ class PlaylistControllerTest extends TestCase
     $usuario = User::first();
     $video = Video::first();
 
-    // Crear una puntuación inicial de 5 para que el video ya esté en "Favoritos"
     Puntua::create([
         'user_id' => $usuario->id,
         'video_id' => $video->id,
         'valora' => 5,
     ]);
 
-    // Asegurarse de que el video esté en "Favoritos"
     $playlist = Playlist::where('nombre', 'Favoritos')->where('user_id', $usuario->id)->first();
     $playlist->videos()->attach($video->id);
 
-    // Actualizar la puntuación a 5 de nuevo, lo que debería eliminar el video de "Favoritos"
     $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
         'user_id' => $usuario->id,
         'valora' => 5,
@@ -231,7 +225,6 @@ class PlaylistControllerTest extends TestCase
     $response->assertStatus(Response::HTTP_OK);
     $response->assertJson(['message' => 'Video eliminado de la playlist "Favoritos".']);
 
-    // Verificar que el video ha sido eliminado de la playlist "Favoritos"
     $this->assertDatabaseMissing('video_lista', [
         'playlist_id' => $playlist->id,
         'video_id' => $video->id,
