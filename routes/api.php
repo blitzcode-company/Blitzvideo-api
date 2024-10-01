@@ -38,6 +38,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/usuario', [CanalController::class, 'listarCanales']);
         Route::get('/suscripciones', [SuscribeController::class, 'ListarSuscripciones']);
         Route::get('/usuario/{userId}/suscripciones', [SuscribeController::class, 'ListarSuscripcionesUsuario']);
+        Route::get('/{canal_id}/suscripciones/count', [SuscribeController::class, 'ContarSuscripciones']);
+
     });
     Route::prefix('etiquetas')->group(function () {
         Route::get('/', [EtiquetaController::class, 'listarEtiquetas']);

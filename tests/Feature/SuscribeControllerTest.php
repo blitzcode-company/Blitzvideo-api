@@ -142,4 +142,56 @@ class SuscribeControllerTest extends TestCase
         $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
         $response->assertJsonValidationErrors(['user_id']);
     }
+
+    public function testUsuarioEstaSuscritoVerificacion()
+    {
+        Suscribe::create([
+            'user_id' => 2,
+            'canal_id' => 10, 
+        ]);
+
+        $response = $this->getJson($this->baseUrl() . '/10/suscripcion?user_id=2');
+    
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson([
+            'suscrito' => true,
+        ]);
+    }
+
+    public function testUsuarioNoEstaSuscritoVerificacion()
+    {
+        $response = $this->getJson($this->baseUrl() . '/10/suscripcion?user_id=10');
+
+    
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson([
+            'suscrito' => false,
+        ]);
+    }
+    
+    public function testPuedeContarSuscripciones()
+    {
+    
+    
+        $response = $this->getJson($this->baseUrl() . '/10/suscripciones/count');
+    
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson([
+            'canal_id' => 10, 
+            'numero_suscripciones' => 2,  
+        ]);
+    }
+
+    public function testContarSuscripcionesSinSuscriptores()
+    {
+        $response = $this->getJson($this->baseUrl() . '/20/suscripciones/count');
+    
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson([
+            'canal_id' => 20,
+            'numero_suscripciones' => 0,
+        ]);
+    }
+
+
 }
