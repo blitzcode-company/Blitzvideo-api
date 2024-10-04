@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('titulo');
             $table->text('descripcion');
             $table->string('miniatura');
+            $table->integer('duracion')->nullable();
             $table->boolean('bloqueado')->default(false);
             $table->enum('acceso', ['publico', 'privado'])->default('publico');
             $table->string('link')->unique();

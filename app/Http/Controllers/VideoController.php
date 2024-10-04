@@ -124,7 +124,9 @@ class VideoController extends Controller
         $urlVideo = $this->generarUrl($rutaVideo);
         $urlMiniatura = $this->generarMiniatura($videoFile, $canalId);
 
-        return ['urlVideo' => $urlVideo, 'urlMiniatura' => $urlMiniatura];
+        $duracion = $this->obtenerDuracionDeVideo($videoFile);
+        
+        return ['urlVideo' => $urlVideo, 'urlMiniatura' => $urlMiniatura, 'duracion' => $duracion];
     }
 
     private function guardarArchivo($archivo, $ruta)
@@ -149,6 +151,14 @@ class VideoController extends Controller
         $this->eliminarArchivoLocal($miniaturaLocalRuta);
 
         return $this->generarUrl($miniaturaS3Ruta);
+    }
+
+    private function obtenerDuracionDeVideo($videoFile) {
+        $ffmpeg = FFMpegHelper::crearFFMpeg();
+        $video = $ffmpeg->open($videoFile->getRealPath());
+        $duracionTotalDelVideo = $video->getStreams()->videos()->first()->get('duration');
+
+        return $duracionTotalDelVideo;
     }
 
     private function extraerFrameAleatorio($videoPath, $miniaturaLocalRuta)
@@ -178,6 +188,7 @@ class VideoController extends Controller
             'descripcion' => $request->descripcion,
             'link' => $videoData['urlVideo'],
             'miniatura' => $videoData['urlMiniatura'],
+            'duracion' => $videoData['duracion'],
             'canal_id' => $canal->id,
         ]);
 

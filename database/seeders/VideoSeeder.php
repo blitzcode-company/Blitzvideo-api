@@ -21,7 +21,8 @@ class VideoSeeder extends Seeder
                     'titulo' => 'Título del video ' . $i . ' para ' . $canal->nombre,
                     'descripcion' => 'Descripción del video ' . $i . ' para ' . $canal->nombre . ' de ' . $canal->user->name,
                     'link' => 'https://www.Blitzvideo.com/video_' . $i . '_' . $canal->id,
-                    'miniatura' => 'https://www.Blitzvideo.com/miniatura' . $i . '_' . $canal->id
+                    'miniatura' => 'https://www.Blitzvideo.com/miniatura' . $i . '_' . $canal->id,
+                    'duracion' => 200
                 ]);
                 $video->etiquetas()->attach($etiquetas->random(3)->pluck('id')->toArray());
             }

@@ -15,6 +15,7 @@ class Video extends Model
         'link',
         'canal_id',
         'miniatura',
+        'duracion',
         'bloqueado', 
         'acceso',      
     ];
