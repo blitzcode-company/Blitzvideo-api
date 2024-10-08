@@ -60,7 +60,11 @@ class VideoController extends Controller
         $this->actualizarCampos($request, $video);
 
         if ($request->hasFile('video')) {
-            $this->reemplazarArchivo($request->file('video'), $video, 'video', $oldVideoPath, $oldMiniaturaPath);
+            $newVideoFile = $request->file('video');
+            $duracion = $this->obtenerDuracionDeVideo($newVideoFile);
+            $this->reemplazarArchivo($newVideoFile, $video, 'video', $oldVideoPath, $oldMiniaturaPath);
+            
+            $video->duracion = $duracion; 
         }
 
         if ($request->hasFile('miniatura')) {
@@ -113,6 +117,7 @@ class VideoController extends Controller
             'descripcion' => 'sometimes|required|string',
             'video' => 'sometimes|required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
             'miniatura' => 'sometimes|required|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'duracion' => 'sometimes|required|int|'
         ];
 
         $this->validarRequest($request, $rules);
