@@ -59,4 +59,19 @@ class UserController extends Controller
             return response()->json(['message' => 'Ocurrió un error al actualizar el usuario'], 500);
         }
     }
+
+    public function convertirUsuarioEnPremium(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
+    
+        $user = User::find($request->user_id);
+        $user->premium = 1; 
+        $user->save();
+    
+        return response()->json(['success' => true, 'message' => 'Usuario actualizado a premium.']);
+    }
+    
+
 }

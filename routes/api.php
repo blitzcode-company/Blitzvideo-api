@@ -24,6 +24,8 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('usuario')->group(function () {
         Route::get('/', [UserController::class, 'listarUsuarios']);
+        Route::post('/premium', [UserController::class, 'convertirUsuarioEnPremium']);
+
         Route::get('/{id}', [UserController::class, 'mostrarUsuarioPorId']);
     });
     Route::prefix('videos')->group(function () {
