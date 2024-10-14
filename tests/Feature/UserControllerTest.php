@@ -25,6 +25,7 @@ class UserControllerTest extends TestCase
                 'email',
                 'email_verified_at',
                 'premium',
+                'fecha_de_nacimiento',
                 'foto',
                 'created_at',
                 'updated_at',
@@ -49,6 +50,7 @@ class UserControllerTest extends TestCase
         $user = new User();
         $user->name = 'Matias';
         $user->email = 'Matias@gmail.com';
+        $user->fecha_de_nacimiento = '2003-04-11';
         $user->password = bcrypt('password');
         $user->save();
 

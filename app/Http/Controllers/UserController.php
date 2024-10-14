@@ -53,6 +53,10 @@ class UserController extends Controller
                 
                 $usuario->foto = $urlFoto;
             }
+            if ($request->has('fecha_de_nacimiento')) {
+                $usuario->fecha_de_nacimiento = $request->input('fecha_de_nacimiento');
+            }
+            
             $usuario->save();
             return response()->json(['message' => 'Usuario actualizado correctamente'], 200);
         } catch (\Exception $exception) {

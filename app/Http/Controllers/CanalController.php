@@ -53,6 +53,8 @@ class CanalController extends Controller
 }
 
 
+
+
     public function crearCanal(Request $request, $userId)
     {
         $usuario = User::findOrFail($userId);
@@ -66,6 +68,67 @@ class CanalController extends Controller
         $this->guardarCanal($canal);
         return response()->json(['message' => 'Canal creado correctamente'], 201);
     }
+  
+    public function darDeBajaCanal($canalId)
+    {
+        try {
+            $canal = Canal::findOrFail($canalId);
+            $videos = Video::where('canal_id', $canalId)->get();
+            foreach ($videos as $video) {
+                $video->delete();
+            }
+            $canal->delete();
+
+            return response()->json(['message' => 'Tu canal y todos tus videos se han dado de baja correctamente'], 200);
+        } catch (ModelNotFoundException $exception) {
+            return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);
+        } catch (QueryException $exception) {
+            return response()->json(['message' => 'Ocurrió un error al dar de baja tu canal y tus videos, por favor inténtalo de nuevo más tarde'], 500);
+        }
+    }
+
+    public function editarCanal(Request $request, $canalId)
+    {
+    
+        try {
+            $datosValidados = $this->validarDatosDeEdicionDeCanal($request);
+            
+            $canal = Canal::findOrFail($canalId);
+            
+            if ($request->has('nombre')) {
+                $canal->nombre = $request->input('nombre'); 
+            }
+    
+            if ($request->has('descripcion')) {
+                $canal->descripcion = $request->input('descripcion'); 
+            }
+    
+            if ($request->hasFile('portada')) {
+                $foto = $request->file('portada');
+                $userId = $canal->user_id; 
+                $folderPath = 'portada/' . $userId;
+                $rutaFoto = $foto->store($folderPath, 's3');
+                $urlFoto = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaFoto));
+                
+                $canal->portada = $urlFoto;
+            }
+    
+            $canal->save();
+    
+            return response()->json(['message' => 'Canal actualizado correctamente', 'canal' => $canal], 200);
+        } catch (ModelNotFoundException $exception) {
+            return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);
+        } catch (QueryException $exception) {
+            return response()->json(['message' => 'Ocurrió un error al actualizar tu canal, por favor inténtalo de nuevo más tarde'], 500);
+        }
+    }
+    
+
+
+    private function guardarCanal(Canal $canal)
+    {
+        return $canal->save();
+    }
 
     private function validarDatos(Request $request)
     {
@@ -76,6 +139,14 @@ class CanalController extends Controller
         ]);
     }
 
+    private function validarDatosDeEdicionDeCanal(Request $request)
+    {
+        return $request->validate([
+            'nombre' => 'sometimes|required|string|max:255',
+            'descripcion' => 'sometimes|nullable|string',
+            'portada' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif,avif|max:2048',
+        ]);
+    }
     private function crearNuevoCanal(array $datosValidados, $userId)
     {
         return new Canal([
@@ -95,29 +166,6 @@ class CanalController extends Controller
             $urlPortada = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaPortada));
             $canal->portada = $urlPortada;
 
-        }
-    }
-    
-    private function guardarCanal(Canal $canal)
-    {
-        return $canal->save();
-    }
-
-    public function darDeBajaCanal($canalId)
-    {
-        try {
-            $canal = Canal::findOrFail($canalId);
-            $videos = Video::where('canal_id', $canalId)->get();
-            foreach ($videos as $video) {
-                $video->delete();
-            }
-            $canal->delete();
-
-            return response()->json(['message' => 'Tu canal y todos tus videos se han dado de baja correctamente'], 200);
-        } catch (ModelNotFoundException $exception) {
-            return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);
-        } catch (QueryException $exception) {
-            return response()->json(['message' => 'Ocurrió un error al dar de baja tu canal y tus videos, por favor inténtalo de nuevo más tarde'], 500);
         }
     }
 }

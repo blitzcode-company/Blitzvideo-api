@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Video;
+use App\Models\User;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Tests\TestCase;
 
@@ -117,7 +118,12 @@ class VideoControllerTest extends TestCase
 
     public function testEditarVideo()
     {
+
+        $user = User::first();
         $video = Video::first();
+
+        $this->actingAs($user);
+
         $nuevoTitulo = 'Nuevo título del video';
         $nuevaDescripcion = 'Nueva descripción del video';
         $response = $this->post(

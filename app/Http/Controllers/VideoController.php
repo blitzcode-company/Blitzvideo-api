@@ -53,7 +53,15 @@ class VideoController extends Controller
     {
         $this->validarEdicionDeVideo($request);
 
+        $user = $request->user();
+        $canalDelUsuario = Canal::where('user_id', $user->id)->firstOrFail();
+
         $video = Video::findOrFail($idVideo);
+
+        if ($video->canal_id !== $canalDelUsuario->id) {
+            return response()->json(['message' => 'No tienes permiso para editar este video.'], 403);
+        }
+
         $oldVideoPath = $this->getStoragePath($video->link);
         $oldMiniaturaPath = $this->getStoragePath($video->miniatura);
 
