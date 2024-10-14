@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Suscribe;
+use App\Models\Canal;
 use Illuminate\Http\Request;
 
 class SuscribeController extends Controller
@@ -51,52 +52,57 @@ class SuscribeController extends Controller
         return response()->json(['message' => 'Suscripción anulada exitosamente.'], 200);
     }
 
-    public function VerificarSuscripcion(Request $request, $canal_id)
+    public function VerificarSuscripcion(Request $request, $canal_id, $user_id)
     {
         $this->validarUsuario($request);
-
-        $suscripcionExistente = Suscribe::where('user_id', $request->user_id)
+        $canal = Canal::find($canal_id);
+        if ($canal->user_id == $user_id) {
+            return response()->json(['estado' => 'propietario'], 200);
+        }
+        $suscripcionExistente = Suscribe::where('user_id', $user_id)
             ->where('canal_id', $canal_id)
             ->exists();
-
-        return response()->json(['suscrito' => $suscripcionExistente], 200);
+        if ($suscripcionExistente) {
+            return response()->json(['estado' => 'suscrito'], 200);
+        } else {
+            return response()->json(['estado' => 'desuscrito'], 200);
+        }
     }
 
     public function ListarSuscripciones()
     {
         $suscripciones = Suscribe::with(['canal.user' => function ($query) {
-            $query->select('id', 'foto'); 
+            $query->select('id', 'foto');
         }])->get();
-    
+
         return response()->json($suscripciones, 200);
     }
-    
+
     public function ListarSuscripcionesUsuario($user_id)
     {
         $suscripciones = Suscribe::where('user_id', $user_id)
             ->with(['canal.user' => function ($query) {
-                $query->select('id', 'foto'); 
+                $query->select('id', 'foto');
             }])->get();
-    
+
         if ($suscripciones->isEmpty()) {
             return response()->json([
                 'message' => 'Este usuario no tiene suscripciones.',
             ], 404);
         }
-    
+
         return response()->json($suscripciones, 200);
     }
 
     public function ContarSuscripciones($canal_id)
     {
         $numeroSuscripciones = Suscribe::where('canal_id', $canal_id)->count();
-    
+
         return response()->json([
-            'canal_id' => (int) $canal_id, 
+            'canal_id' => (int) $canal_id,
             'numero_suscripciones' => $numeroSuscripciones,
         ]);
     }
-
 
     private function validarUsuario(Request $request)
     {

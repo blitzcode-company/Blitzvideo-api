@@ -92,7 +92,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/{canalId}/suscripcion', [SuscribeController::class, 'Suscribirse']);
         Route::delete('/{canalId}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
 
-        Route::get('/{canal_id}/suscripcion', [SuscribeController::class, 'VerificarSuscripcion']);
+        Route::get('/{canal_id}/usuario/{user_id}/suscripcion', [SuscribeController::class, 'VerificarSuscripcion']);
 
         Route::delete('/{canal_id}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
     });
