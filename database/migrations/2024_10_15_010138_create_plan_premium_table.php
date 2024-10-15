@@ -14,7 +14,7 @@ class CreatePlanPremiumsTable extends Migration
             $table->string('metodo_de_pago');
             $table->date('fecha_pago');
             $table->date('fecha_cancelacion')->nullable();
-            $table->string('suscripcion_id');
+            $table->string('suscripcion_id')->nullable();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
         });
     }
