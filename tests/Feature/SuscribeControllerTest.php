@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Suscribe;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Illuminate\Http\Response;
 use Tests\TestCase;
-use App\Models\Suscribe;
 
 class SuscribeControllerTest extends TestCase
 {
@@ -92,18 +92,17 @@ class SuscribeControllerTest extends TestCase
         $response->assertJson(['message' => 'Este usuario no tiene suscripciones.']);
     }
 
-
     public function testUsuarioEstaSuscrito()
     {
         Suscribe::create([
             'user_id' => 2,
             'canal_id' => 1,
         ]);
-    
+
         $response = $this->postJson($this->baseUrl() . '/1/suscripcion', [
             'user_id' => 2,
         ]);
-    
+
         $response->assertStatus(Response::HTTP_CONFLICT);
         $response->assertJson([
             'message' => 'Ya estás suscrito a este canal.',
@@ -112,16 +111,16 @@ class SuscribeControllerTest extends TestCase
     public function testUsuarioNoEstaSuscrito()
     {
         $response = $this->postJson($this->baseUrl() . '/1/suscripcion', [
-            'user_id' => 10, 
+            'user_id' => 10,
         ]);
-    
+
         $response->assertStatus(Response::HTTP_CREATED);
-    
+
         $response->assertJson([
             'data' => [
                 'user_id' => 10,
                 'canal_id' => '1',
-            ]
+            ],
         ]);
     }
 
@@ -136,7 +135,7 @@ class SuscribeControllerTest extends TestCase
     public function testValidacionFallaConUserIdInvalido()
     {
         $response = $this->postJson($this->baseUrl() . '/1/suscripcion', [
-            'user_id' => 999, 
+            'user_id' => 999,
         ]);
 
         $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -147,51 +146,56 @@ class SuscribeControllerTest extends TestCase
     {
         Suscribe::create([
             'user_id' => 2,
-            'canal_id' => 10, 
+            'canal_id' => 10,
         ]);
 
-        $response = $this->getJson($this->baseUrl() . '/10/suscripcion?user_id=2');
-    
+        $response = $this->getJson($this->baseUrl() . '/10/usuario/2/suscripcion?user_id=2');
+
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson([
-            'suscrito' => true,
+            'estado' => 'suscrito',
         ]);
     }
 
     public function testUsuarioNoEstaSuscritoVerificacion()
     {
-        $response = $this->getJson($this->baseUrl() . '/10/suscripcion?user_id=10');
-
-    
+        $response = $this->getJson($this->baseUrl() . '/10/usuario/5/suscripcion?user_id=5');
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson([
-            'suscrito' => false,
+            'estado' => 'desuscrito',
         ]);
     }
-    
-    public function testPuedeContarSuscripciones()
+
+    public function testUsuarioPropietarioVerificacion()
     {
-    
-    
-        $response = $this->getJson($this->baseUrl() . '/10/suscripciones/count');
-    
+        $response = $this->getJson($this->baseUrl() . '/2/usuario/2/suscripcion?user_id=2');
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson([
-            'canal_id' => 10, 
-            'numero_suscripciones' => 2,  
+            'estado' => 'propietario',
+        ]);
+    }
+
+    public function testPuedeContarSuscripciones()
+    {
+
+        $response = $this->getJson($this->baseUrl() . '/10/suscripciones/count');
+
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson([
+            'canal_id' => 10,
+            'numero_suscripciones' => 2,
         ]);
     }
 
     public function testContarSuscripcionesSinSuscriptores()
     {
         $response = $this->getJson($this->baseUrl() . '/20/suscripciones/count');
-    
+
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson([
             'canal_id' => 20,
             'numero_suscripciones' => 0,
         ]);
     }
-
 
 }
