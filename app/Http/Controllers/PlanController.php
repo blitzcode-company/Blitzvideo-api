@@ -59,5 +59,4 @@ class PlanController extends Controller
         $user->save();
         return response()->json(['success' => true, 'message' => 'El plan ha sido dado de baja y se ha registrado la fecha de cancelación.']);
     }
-
 }
