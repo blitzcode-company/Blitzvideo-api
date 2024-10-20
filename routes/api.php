@@ -4,6 +4,7 @@ use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\ReportaComentarioController;
@@ -24,10 +25,15 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('usuario')->group(function () {
         Route::get('/', [UserController::class, 'listarUsuarios']);
-        Route::post('/premium', [UserController::class, 'convertirUsuarioEnPremium']);
-
         Route::get('/{id}', [UserController::class, 'mostrarUsuarioPorId']);
     });
+
+    Route::prefix('plan')->group(function () {
+        Route::post('/', [PlanController::class, 'registrarPlan']);
+        Route::get('/usuario/{user_id}', [PlanController::class, 'listarPlan']);
+        Route::delete('/usuario/{user_id}', [PlanController::class, 'bajaPlan']);
+    });
+
     Route::prefix('videos')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarTodosLosVideos']);
         Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);

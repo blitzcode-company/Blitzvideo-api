@@ -4,11 +4,11 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreatePlanPremiumTable extends Migration
+class CreatePlanTable extends Migration
 {
     public function up()
     {
-        Schema::create('plan_premium', function (Blueprint $table) {
+        Schema::create('plan', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
             $table->string('metodo_de_pago');
@@ -21,6 +21,6 @@ class CreatePlanPremiumTable extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('plan_premium');
+        Schema::dropIfExists('plan');
     }
 }
