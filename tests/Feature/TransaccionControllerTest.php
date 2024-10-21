@@ -2,20 +2,20 @@
 
 namespace Tests\Feature;
 
-use App\Models\Plan;
+use App\Models\Transaccion;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Tests\TestCase;
 
-class PlanTest extends TestCase
+class TransaccionControllerTest extends TestCase
 {
     use WithoutMiddleware;
 
     public function test_registrar_plan()
     {
         $user_id = 2;
-        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "plan", [
+        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "transaccion/plan", [
             'user_id' => $user_id,
-            'nombre_plan' => 'Plan Premium',
+            'plan' => 'Plan Premium',
             'metodo_de_pago' => 'Paypal',
             'suscripcion_id' => '123',
         ]);
@@ -28,8 +28,8 @@ class PlanTest extends TestCase
             'id' => $user_id,
             'premium' => 1,
         ]);
-        $this->assertDatabaseHas('plan', [
-            'nombre' => 'Plan Premium',
+        $this->assertDatabaseHas('transaccion', [
+            'plan' => 'Plan Premium',
             'metodo_de_pago' => 'Paypal',
             'user_id' => $user_id,
         ]);
@@ -37,28 +37,28 @@ class PlanTest extends TestCase
 
     public function test_listar_plan()
     {
-        $plan = Plan::first();
-        if (!$plan) {
+        $transaccion = Transaccion::first();
+        if (!$transaccion) {
             $this->fail('No se encontró ningún plan en la base de datos.');
         }
-        $user_id = $plan->user_id;
-        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "plan/usuario/{$user_id}");
+        $user_id = $transaccion->user_id;
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "transaccion/plan/usuario/{$user_id}");
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'plan' => [
+                'transaccion' => [
                     'user_id' => $user_id,
-                    'nombre' => $plan->nombre,
-                    'metodo_de_pago' => $plan->metodo_de_pago,
+                    'plan' => $transaccion->plan,
+                    'metodo_de_pago' => $transaccion->metodo_de_pago,
                 ],
             ]);
     }
 
     public function test_baja_plan()
     {
-        $plan = Plan::first();
+        $transaccion = Transaccion::first();
         $user_id = 2;
-        $response = $this->deleteJson(env('BLITZVIDEO_BASE_URL') . "plan/usuario/{$user_id}");
+        $response = $this->deleteJson(env('BLITZVIDEO_BASE_URL') . "transaccion/plan/usuario/{$user_id}");
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
@@ -68,8 +68,8 @@ class PlanTest extends TestCase
             'id' => $user_id,
             'premium' => 0,
         ]);
-        $this->assertDatabaseHas('plan', [
-            'id' => $plan->id,
+        $this->assertDatabaseHas('transaccion', [
+            'id' => $transaccion->id,
             'fecha_cancelacion' => now()->toDateString(),
         ]);
     }

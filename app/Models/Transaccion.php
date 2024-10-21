@@ -5,17 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Plan extends Model
+class Transaccion extends Model
 {
     use HasFactory;
 
-    protected $table = 'plan';
+    protected $table = 'transaccion';
     public $timestamps = false;
 
     protected $fillable = [
-        'nombre',
+        'plan',
         'metodo_de_pago',
-        'fecha_pago',
+        'fecha_inicio',
         'fecha_cancelacion',
         'suscripcion_id',
         'user_id',

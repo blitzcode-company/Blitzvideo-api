@@ -4,7 +4,7 @@ use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
-use App\Http\Controllers\PlanController;
+use App\Http\Controllers\TransaccionController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\ReportaComentarioController;
@@ -61,10 +61,10 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('{userId}', [UserController::class, 'editarUsuario']);
     });
 
-    Route::prefix('plan')->group(function () {
-        Route::post('/', [PlanController::class, 'registrarPlan']);
-        Route::get('/usuario/{user_id}', [PlanController::class, 'listarPlan']);
-        Route::delete('/usuario/{user_id}', [PlanController::class, 'bajaPlan']);
+    Route::prefix('transaccion')->group(function () {
+        Route::post('/plan', [TransaccionController::class, 'registrarPlan']);
+        Route::get('/plan/usuario/{user_id}', [TransaccionController::class, 'listarPlan']);
+        Route::delete('/plan/usuario/{user_id}', [TransaccionController::class, 'bajaPlan']);
     });
     Route::prefix('videos')->group(function () {
         Route::post('/canal/{idCanal}', [VideoController::class, 'subirVideo']);
