@@ -71,8 +71,8 @@ class VideoController extends Controller
             $newVideoFile = $request->file('video');
             $duracion = $this->obtenerDuracionDeVideo($newVideoFile);
             $this->reemplazarArchivo($newVideoFile, $video, 'video', $oldVideoPath, $oldMiniaturaPath);
-            
-            $video->duracion = $duracion; 
+
+            $video->duracion = $duracion;
         }
 
         if ($request->hasFile('miniatura')) {
@@ -90,15 +90,6 @@ class VideoController extends Controller
         $video->delete();
         $video->save();
         return response()->json(['message' => 'Video dado de baja correctamente'], 200);
-    }
-
-    public function bloquearVideo($idVideo) {
-
-        $video = Video::findOrFAil($idVideo);
-        $video->estado = 'bloqueado';
-        $video->save();
-        return response()->json(['message' => 'Video bloqueado con exito'], 200);
-
     }
 
     private function validarRequest($request, $rules)
@@ -125,7 +116,7 @@ class VideoController extends Controller
             'descripcion' => 'sometimes|required|string',
             'video' => 'sometimes|required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
             'miniatura' => 'sometimes|required|image|mimes:jpeg,png,jpg,gif|max:10240',
-            'duracion' => 'sometimes|required|int|'
+            'duracion' => 'sometimes|required|int|',
         ];
 
         $this->validarRequest($request, $rules);
@@ -138,7 +129,7 @@ class VideoController extends Controller
         $urlMiniatura = $this->generarMiniatura($videoFile, $canalId);
 
         $duracion = $this->obtenerDuracionDeVideo($videoFile);
-        
+
         return ['urlVideo' => $urlVideo, 'urlMiniatura' => $urlMiniatura, 'duracion' => $duracion];
     }
 
@@ -166,7 +157,8 @@ class VideoController extends Controller
         return $this->generarUrl($miniaturaS3Ruta);
     }
 
-    private function obtenerDuracionDeVideo($videoFile) {
+    private function obtenerDuracionDeVideo($videoFile)
+    {
         $ffmpeg = FFMpegHelper::crearFFMpeg();
         $video = $ffmpeg->open($videoFile->getRealPath());
         $duracionTotalDelVideo = $video->getStreams()->videos()->first()->get('duration');
