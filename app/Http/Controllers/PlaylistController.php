@@ -29,7 +29,8 @@ class PlaylistController extends Controller
         }
     
         return response()->json([
-            'message' => 'Playlist creada exitosamente.',
+            'message' => 'Playlist creada exitosamente.', 
+            'playlist' => $playlist
         ], 201);
     }
     
