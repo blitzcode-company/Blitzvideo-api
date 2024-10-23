@@ -16,8 +16,8 @@ class Video extends Model
         'canal_id',
         'miniatura',
         'duracion',
-        'bloqueado', 
-        'acceso',      
+        'bloqueado',
+        'acceso',
     ];
 
     public function canal()
@@ -54,5 +54,12 @@ class Video extends Model
     public function playlists()
     {
         return $this->belongsToMany(Playlist::class, 'video_lista');
+    }
+
+    public function publicidad()
+    {
+        return $this->belongsToMany(Publicidad::class, 'video_publicidad')
+            ->withPivot('vistos')
+            ->withTimestamps();
     }
 }

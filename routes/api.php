@@ -4,12 +4,13 @@ use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
-use App\Http\Controllers\TransaccionController;
 use App\Http\Controllers\PlaylistController;
+use App\Http\Controllers\PublicidadController;
 use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\ReportaComentarioController;
 use App\Http\Controllers\ReportaController;
 use App\Http\Controllers\SuscribeController;
+use App\Http\Controllers\TransaccionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VisitaController;
@@ -70,7 +71,6 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/canal/{idCanal}', [VideoController::class, 'subirVideo']);
         Route::post('/{idVideo}', [VideoController::class, 'editarVideo']);
         Route::delete('/{idVideo}', [VideoController::class, 'bajaLogicaVideo']);
-        Route::post('/{idVideo}/bloquear', [VideoController::class, 'bloquearVideo']);
         Route::post('/{idVideo}/comentarios', [ComentarioController::class, 'crearComentario']);
         Route::post('/comentarios/respuesta/{idComentario}', [ComentarioController::class, 'responderComentario']);
         Route::post('/comentarios/{idComentario}', [ComentarioController::class, 'editarComentario']);
@@ -82,6 +82,15 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
         Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);
     });
+
+    Route::prefix('publicidad')->group(function () {
+        Route::post('/', [PublicidadController::class, 'crearPublicidad']);
+        Route::put('/{id}', [PublicidadController::class, 'modificarPublicidad']);
+        Route::delete('/{id}', [PublicidadController::class, 'eliminarPublicidad']);
+        Route::get('/', [PublicidadController::class, 'listarPublicidades']);
+        Route::get('/{publicidadId}/usuario/{userId}', [PublicidadController::class, 'contarVistasPublicidad']);
+    });
+
     Route::prefix('playlists')->group(function () {
         Route::post('/', [PlaylistController::class, 'CrearPlaylist']);
         Route::post('/{playlistId}/videos', [PlaylistController::class, 'AgregarVideosAPlaylist']);
@@ -94,12 +103,9 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
         Route::delete('/{canalId}', [CanalController::class, 'darDeBajaCanal']);
         Route::post('/{canalId}/canal', [CanalController::class, 'editarCanal']);
-
         Route::post('/{canalId}/suscripcion', [SuscribeController::class, 'Suscribirse']);
         Route::delete('/{canalId}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
-
         Route::get('/{canal_id}/usuario/{user_id}/suscripcion', [SuscribeController::class, 'VerificarSuscripcion']);
-
         Route::delete('/{canal_id}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
     });
     Route::prefix('etiquetas')->group(function () {
@@ -113,7 +119,6 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::put('/{reporteId}', [ReportaController::class, 'ModificarReporte']);
         Route::delete('/{reporteId}', [ReportaController::class, 'BorrarReporte']);
         Route::delete('/video/{videoId}', [ReportaController::class, 'BorrarReportesDeVideo']);
-
         Route::post('/comentario', [ReportaComentarioController::class, 'CrearReporte']);
         Route::get('/comentario', [ReportaComentarioController::class, 'ListarReportes']);
         Route::get('/comentario/{comentarioId}', [ReportaComentarioController::class, 'ListarReportesDeComentario']);
