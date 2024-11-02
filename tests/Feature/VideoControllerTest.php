@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Video;
 use App\Models\User;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Tests\TestCase;
 
@@ -113,6 +113,19 @@ class VideoControllerTest extends TestCase
                     ],
                 ],
             ],
+        ]);
+    }
+
+    public function testMostrarInformacionVideoCuandoEstaBloqueado()
+    {
+        $video = Video::first();
+        $video->bloqueado = true;
+        $video->save();
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}");
+        $response->assertStatus(403);
+        $response->assertJson([
+            'error' => 'El video está bloqueado y no se puede acceder.',
+            'code' => 403,
         ]);
     }
 
