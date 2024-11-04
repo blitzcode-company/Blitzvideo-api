@@ -16,13 +16,13 @@ class ReportaComentarioController extends Controller
             'user_id' => 'required|exists:users,id',
             'comentario_id' => 'required|exists:comentarios,id',
             'detalle' => 'nullable|string',
-            'lenguaje_ofensivo' => 'boolean',
-            'spam' => 'boolean',
-            'contenido_enganoso' => 'boolean',
-            'incitacion_al_odio' => 'boolean',
-            'acoso' => 'boolean',
-            'contenido_sexual' => 'boolean',
-            'otros' => 'boolean',
+            'lenguaje_ofensivo' => 'nullable|boolean',
+            'spam' => 'nullable|boolean',
+            'contenido_enganoso' => 'nullable|boolean',
+            'incitacion_al_odio' => 'nullable|boolean',
+            'acoso' => 'nullable|boolean',
+            'contenido_sexual' => 'nullable|boolean',
+            'otros' => 'nullable|boolean',
         ]);
 
         $reporte = ReportaComentario::create($validatedData);
