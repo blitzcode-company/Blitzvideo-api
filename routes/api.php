@@ -8,6 +8,7 @@ use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\PublicidadController;
 use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\ReportaComentarioController;
+use App\Http\Controllers\ReportaUsuarioController;
 use App\Http\Controllers\ReportaController;
 use App\Http\Controllers\SuscribeController;
 use App\Http\Controllers\TransaccionController;
@@ -126,5 +127,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::put('/{reporteId}/comentario', [ReportaComentarioController::class, 'ModificarReporte']);
         Route::delete('/{reporteId}/comentario', [ReportaComentarioController::class, 'BorrarReporte']);
         Route::delete('/comentario/{comentarioId}', [ReportaComentarioController::class, 'BorrarReportesDeComentario']);
+        Route::post('/usuario', [ReportaUsuarioController::class, 'CrearReporte']);
+
     });
 });

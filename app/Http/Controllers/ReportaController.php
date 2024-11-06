@@ -37,7 +37,7 @@ class ReportaController extends Controller
 
     public function ListarReportes()
     {
-        $reportes = Reporta::with(['usuario', 'video'])->get();
+        $reportes = Reporta::with(['user', 'video'])->get();
 
         return response()->json([
             'reportes' => $reportes
@@ -46,7 +46,7 @@ class ReportaController extends Controller
 
     public function ListarReportesDeVideo($videoId)
     {
-        $reportes = Reporta::where('video_id', $videoId)->with('usuario')->get();
+        $reportes = Reporta::where('video_id', $videoId)->with('user')->get();
 
         return response()->json([
             'reportes' => $reportes
