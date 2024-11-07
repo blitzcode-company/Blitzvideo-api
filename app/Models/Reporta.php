@@ -25,7 +25,7 @@ class Reporta extends Model
         'otros',
     ];
 
-    public function usuario()
+    public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
     }

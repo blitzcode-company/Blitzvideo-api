@@ -16,14 +16,17 @@ class UserControllerTest extends TestCase
     {
         $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'usuario');
         $response->assertStatus(200);
+        $responseData = $response->json();
+
         $response->assertJsonStructure([
             '*' => [
                 'id',
                 'name',
                 'email',
                 'email_verified_at',
-                'premium',
                 'fecha_de_nacimiento',
+                'premium',
+                'bloqueado',
                 'foto',
                 'created_at',
                 'updated_at',
@@ -43,6 +46,7 @@ class UserControllerTest extends TestCase
         ]);
     }
 
+
     public function testMostrarUsuarioPorId()
     {
         $user = User::latest()->first();
@@ -53,8 +57,9 @@ class UserControllerTest extends TestCase
             'name',
             'email',
             'email_verified_at',
-            'premium',
             'fecha_de_nacimiento',
+            'premium',
+            'bloqueado',
             'foto',
             'created_at',
             'updated_at',
