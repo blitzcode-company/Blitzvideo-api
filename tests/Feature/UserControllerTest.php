@@ -28,22 +28,23 @@ class UserControllerTest extends TestCase
                 'premium',
                 'bloqueado',
                 'foto',
+                'deleted_at',
                 'created_at',
                 'updated_at',
-                'canales' => [
-                    '*' => [
-                        'id',
-                        'user_id',
-                        'nombre',
-                        'descripcion',
-                        'portada',
-                        'deleted_at',
-                        'created_at',
-                        'updated_at',
-                    ],
+                'canales' => [ 
+                    'id',
+                    'user_id',
+                    'nombre',
+                    'descripcion',
+                    'portada',
+                    'deleted_at',
+                    'created_at',
+                    'updated_at',
                 ],
             ],
         ]);
+       
+    
     }
 
 
@@ -61,21 +62,21 @@ class UserControllerTest extends TestCase
             'premium',
             'bloqueado',
             'foto',
+            'deleted_at',
             'created_at',
             'updated_at',
-            'canales' => [
-                '*' => [
-                    'id',
-                    'user_id',
-                    'nombre',
-                    'descripcion',
-                    'portada',
-                    'deleted_at',
-                    'created_at',
-                    'updated_at',
-                ],
+            'canales' => [ 
+                'id',
+                'user_id',
+                'nombre',
+                'descripcion',
+                'portada',
+                'deleted_at',
+                'created_at',
+                'updated_at',
             ],
         ]);
+
         $response->assertJson([
             'id' => $user->id,
             'name' => $user->name,

@@ -123,15 +123,18 @@ class ReportaControllerTest extends TestCase
     public function testPuedeBorrarTodosReportesDeVideo()
     {
         $reportes = Reporta::where('video_id', 3)->get();
-
+    
         $response = $this->deleteJson($this->baseUrl() . 'reporte/video/3');
-
+    
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Todos los reportes del video han sido borrados exitosamente.']);
+    
+        $now = now();
+    
         foreach ($reportes as $reporte) {
             $this->assertDatabaseHas('reporta', [
                 'id' => $reporte->id,
-                'deleted_at' => $this->getDeletedAtTimestamp(),
+                'deleted_at' => $now->toDateTimeString(),
             ]);
         }
     }

@@ -24,6 +24,9 @@ class CreateReportaUsuarioTable extends Migration
             $table->boolean('incitacion_odio')->default(false);
             $table->boolean('otros')->default(false);
             $table->text('detalle')->nullable();
+            $table->enum('estado', ['pendiente', 'resuelto'])->default('pendiente');
+            $table->timestamp('revisado_en')->nullable(); 
+            $table->softDeletes(); 
             $table->timestamps();
         });
     }

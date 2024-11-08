@@ -20,6 +20,8 @@ class CreateReportaComentarioTable extends Migration
             $table->boolean('acoso')->default(false);
             $table->boolean('contenido_sexual')->default(false);
             $table->boolean('otros')->default(false);
+            $table->enum('estado', ['pendiente', 'resuelto'])->default('pendiente');
+            $table->timestamp('revisado_en')->nullable(); 
             $table->softDeletes(); 
             $table->timestamps();
         });

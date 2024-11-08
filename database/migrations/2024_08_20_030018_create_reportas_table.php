@@ -20,6 +20,8 @@ class CreateReportasTable extends Migration
             $table->boolean('incitacion_al_odio')->default(false);
             $table->boolean('violencia_grafica')->default(false);
             $table->boolean('otros')->default(false);
+            $table->enum('estado', ['pendiente', 'resuelto'])->default('pendiente');
+            $table->timestamp('revisado_en')->nullable(); 
             $table->softDeletes(); 
             $table->timestamps();
         });
