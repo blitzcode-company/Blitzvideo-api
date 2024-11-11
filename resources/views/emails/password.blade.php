@@ -31,6 +31,22 @@
             color: #555;
         }
 
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 20px;
+            background-color: #0baafe;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .button:hover {
+            background-color: #0077cc;
+        }
+
         .footer {
             margin-top: 20px;
             font-size: 12px;
@@ -46,6 +62,7 @@
         </p>
         <h1>{{ $asunto }}</h1>
         <p>{!! nl2br(e($mensaje)) !!}</p>
+        <a href="{{ $link }}" class="button">Haz clic aquí</a>
         <div class="footer">
             <p>Este es un mensaje generado automáticamente. No respondas a este correo.</p>
         </div>

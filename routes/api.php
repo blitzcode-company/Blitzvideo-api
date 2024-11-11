@@ -4,12 +4,13 @@ use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\PublicidadController;
 use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\ReportaComentarioController;
-use App\Http\Controllers\ReportaUsuarioController;
 use App\Http\Controllers\ReportaController;
+use App\Http\Controllers\ReportaUsuarioController;
 use App\Http\Controllers\SuscribeController;
 use App\Http\Controllers\TransaccionController;
 use App\Http\Controllers\UserController;
@@ -114,20 +115,12 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     });
     Route::prefix('reporte')->group(function () {
         Route::post('/', [ReportaController::class, 'CrearReporte']);
-        Route::get('/', [ReportaController::class, 'ListarReportes']);
-        Route::get('/video/{videoId}', [ReportaController::class, 'ListarReportesDeVideo']);
-        Route::get('/usuario/{userId}', [ReportaController::class, 'ListarReportesDeUsuario']);
-        Route::put('/{reporteId}', [ReportaController::class, 'ModificarReporte']);
-        Route::delete('/{reporteId}', [ReportaController::class, 'BorrarReporte']);
-        Route::delete('/video/{videoId}', [ReportaController::class, 'BorrarReportesDeVideo']);
         Route::post('/comentario', [ReportaComentarioController::class, 'CrearReporte']);
-        Route::get('/comentario', [ReportaComentarioController::class, 'ListarReportes']);
-        Route::get('/comentario/{comentarioId}', [ReportaComentarioController::class, 'ListarReportesDeComentario']);
-        Route::get('/comentario/usuario/{userId}', [ReportaComentarioController::class, 'ListarReportesDeUsuario']);
-        Route::put('/{reporteId}/comentario', [ReportaComentarioController::class, 'ModificarReporte']);
-        Route::delete('/{reporteId}/comentario', [ReportaComentarioController::class, 'BorrarReporte']);
-        Route::delete('/comentario/{comentarioId}', [ReportaComentarioController::class, 'BorrarReportesDeComentario']);
         Route::post('/usuario', [ReportaUsuarioController::class, 'CrearReporte']);
+    });
 
+    Route::prefix('password')->group(function () {
+        Route::post('/email', [PasswordResetController::class, 'enviarRestablecerEnlaceCorreo']);
+        Route::post('/reset', [PasswordResetController::class, 'resetPassword'])->name('password.reset');
     });
 });

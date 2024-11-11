@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Models\ReportaUsuario;
-use Illuminate\Support\Facades\Http;
-
+use Illuminate\Http\Request;
 
 class ReportaUsuarioController extends Controller
 {
@@ -28,7 +25,7 @@ class ReportaUsuarioController extends Controller
 
         return response()->json([
             'message' => 'Reporte creado exitosamente.',
-            'reporte' => $reporte
+            'reporte' => $reporte,
         ], 201);
     }
 }
