@@ -31,26 +31,26 @@ class UserControllerTest extends TestCase
                 'deleted_at',
                 'created_at',
                 'updated_at',
-                'canales' => [ 
-                    'id',
-                    'user_id',
-                    'nombre',
-                    'descripcion',
-                    'portada',
-                    'deleted_at',
-                    'created_at',
-                    'updated_at',
+                'canales' => [
+                    '*' => [
+                        'id',
+                        'user_id',
+                        'nombre',
+                        'descripcion',
+                        'portada',
+                        'deleted_at',
+                        'created_at',
+                        'updated_at',
+                    ],
                 ],
             ],
         ]);
-       
-    
-    }
 
+    }
 
     public function testMostrarUsuarioPorId()
     {
-        $user = User::latest()->first();
+        $user = User::find(2);
         $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "usuario/{$user->id}");
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -65,15 +65,17 @@ class UserControllerTest extends TestCase
             'deleted_at',
             'created_at',
             'updated_at',
-            'canales' => [ 
-                'id',
-                'user_id',
-                'nombre',
-                'descripcion',
-                'portada',
-                'deleted_at',
-                'created_at',
-                'updated_at',
+            'canales' => [
+                '*' => [
+                    'id',
+                    'user_id',
+                    'nombre',
+                    'descripcion',
+                    'portada',
+                    'deleted_at',
+                    'created_at',
+                    'updated_at',
+                ],
             ],
         ]);
 

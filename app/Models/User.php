@@ -32,7 +32,7 @@ class User extends Authenticatable
 
     public function canales()
     {
-        return $this->hasOne(Canal::class);
+        return $this->hasMany(Canal::class);
     }
 
     public function visitas()

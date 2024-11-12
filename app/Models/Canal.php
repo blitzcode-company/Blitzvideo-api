@@ -17,7 +17,7 @@ class Canal extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-    
+
     public function videos()
     {
         return $this->hasMany(Video::class);
