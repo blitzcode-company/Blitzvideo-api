@@ -10,6 +10,12 @@ class ReportaUsuario extends Model
 {    
     use HasFactory, SoftDeletes; 
 
+
+    const ESTADO_RESUELTO = 'resuelto';
+    const ESTADO_PENDIENTE = 'pendiente';
+
+
+
     protected $table = 'reporta_usuario';
 
     protected $fillable = [
