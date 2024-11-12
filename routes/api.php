@@ -57,7 +57,6 @@ Route::prefix('v1')->group(function () {
     });
        Route::prefix('password')->group(function () {
         Route::post('/email', [PasswordResetController::class, 'enviarRestablecerEnlaceCorreo']);
-        Route::post('/reset', [PasswordResetController::class, 'resetPassword'])->name('password.reset');
     });
 });
 
@@ -121,6 +120,9 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/', [ReportaController::class, 'CrearReporte']);
         Route::post('/comentario', [ReportaComentarioController::class, 'CrearReporte']);
         Route::post('/usuario', [ReportaUsuarioController::class, 'CrearReporte']);
+    });
+    Route::prefix('password')->group(function () {
+        Route::post('/reset', [PasswordResetController::class, 'resetPassword'])->name('password.reset');
     });
 
  
