@@ -20,7 +20,8 @@ class DatabaseSeeder extends Seeder
             SuscribeSeeder::class,
             TransaccionSeeder::class,
             PublicidadSeeder::class,
-            VisitaSeeder::class
+            VisitaSeeder::class,
+            NotificacionSeeder::class
         ]);
     }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
+use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\PublicidadController;
@@ -55,7 +56,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
         Route::get('/{playlistId}', [PlaylistController::class, 'ObtenerPlaylistConVideos']);
     });
-       Route::prefix('password')->group(function () {
+    Route::prefix('password')->group(function () {
         Route::post('/email', [PasswordResetController::class, 'enviarRestablecerEnlaceCorreo']);
     });
 });
@@ -124,6 +125,10 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('password')->group(function () {
         Route::post('/reset', [PasswordResetController::class, 'resetPassword'])->name('password.reset');
     });
-
- 
+    Route::prefix('notificacion')->group(function () {
+        Route::post('/vista', [NotificacionController::class, 'marcarNotificacionComoVista']);
+        Route::get('/usuario/{usuarioId}', [NotificacionController::class, 'listarNotificacionesDelMes']);
+        Route::delete('/{notificacionId}/usuario/{usuarioId}', [NotificacionController::class, 'borrarNotificacion']);
+        Route::delete('usuario/{usuarioId}', [NotificacionController::class, 'borrarTodasLasNotificaciones']);
+    });
 });

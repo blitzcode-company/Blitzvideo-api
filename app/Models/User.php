@@ -55,4 +55,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Canal::class, 'suscribe')->withTimestamps()->withTrashed();
     }
 
+    public function notificaciones()
+    {
+        return $this->belongsToMany(Notificacion::class, 'notifica', 'usuario_id', 'notificacion_id')
+                    ->withPivot('leido')
+                    ->withTimestamps();
+    }
+    
+
 }
