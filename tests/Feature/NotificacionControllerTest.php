@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Models\Canal;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
+use Illuminate\Http\JsonResponse;
 use Tests\TestCase;
 
 class NotificacionControllerTest extends TestCase
@@ -38,7 +39,7 @@ class NotificacionControllerTest extends TestCase
         );
         $this->assertDatabaseHas('notificacion', [
             'referencia_id' => $video->id,
-            'referencia_tipo' => 'video',
+            'referencia_tipo' => 'new_video',
         ]);
     }
 
@@ -204,5 +205,59 @@ class NotificacionControllerTest extends TestCase
             'message' => 'No hay notificaciones para este mes',
         ]);
     }
+
+    /** @test */
+    public function debe_crear_notificacion_de_comentario_en_video()
+    {
+        $usuarioComentario = User::find(3);
+        $usuarioPropietario = User::find(2);
+        $video = Video::find(5);
+        $this->assertNotNull($usuarioComentario, 'Usuario que comenta no encontrado');
+        $this->assertNotNull($usuarioPropietario, 'Usuario propietario no encontrado');
+        $this->assertNotNull($video, 'Video no encontrado');
+        $controller = new NotificacionController();
+        $response = $controller->crearNotificacionDeComentarioEnVideo($video->id, $usuarioComentario->id);
+        $this->assertInstanceOf(JsonResponse::class, $response);
+        $this->assertEquals(201, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertArrayHasKey('success', $responseData);
+        $this->assertArrayHasKey('message', $responseData);
+        $this->assertTrue($responseData['success']);
+        $this->assertEquals('Notificación creada exitosamente.', $responseData['message']);
+        $this->assertDatabaseHas('notificacion', [
+            'referencia_id' => $video->id,
+            'referencia_tipo' => 'new_comment',
+            'mensaje' => $usuarioComentario->name . " ha comentado en tu video: " . $video->titulo,
+        ]);
+        $this->assertTrue($usuarioPropietario->notificaciones->count() > 0);
+    }
+    
+    public function test_debe_crear_notificacion_de_respuesta_a_comentario()
+    {
+        $usuarioComentario = User::find(3);
+        $usuarioRespondedor = User::find(4);
+        $video = Video::find(5);
+        
+        $this->assertNotNull($usuarioComentario, 'Usuario que comenta no encontrado');
+        $this->assertNotNull($usuarioRespondedor, 'Usuario respondedor no encontrado');
+        $this->assertNotNull($video, 'Video no encontrado');
+        $controller = new NotificacionController();
+        $response = $controller->crearNotificacionDeRespuestaComentario($usuarioComentario->id, $usuarioRespondedor->id, $video->id);
+        $this->assertInstanceOf(JsonResponse::class, $response);
+        $this->assertEquals(201, $response->getStatusCode());
+        $responseData = json_decode($response->getContent(), true);
+        $this->assertTrue($responseData['success']);
+        $this->assertEquals('Notificación creada exitosamente.', $responseData['message']);
+        $this->assertArrayHasKey('notificacion', $responseData);
+        $this->assertArrayHasKey('usuario', $responseData);
+        $this->assertDatabaseHas('notificacion', [
+            'referencia_id' => $video->id,
+            'referencia_tipo' => 'new_reply',
+            'mensaje' => $usuarioRespondedor->name . " ha respondido a tu comentario en el video: " . $video->titulo,
+        ]);
+        $usuarioComentario->refresh();
+        $this->assertTrue($usuarioComentario->notificaciones->count() > 0);
+    }
+
 
 }

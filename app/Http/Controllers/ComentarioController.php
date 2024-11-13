@@ -27,7 +27,8 @@ class ComentarioController extends Controller
             'mensaje' => $request->mensaje,
         ]);
         $comentario->save();
-
+        $notificacionController = new NotificacionController();
+        $notificacionController->crearNotificacionDeComentarioEnVideo($idVideo, $request->usuario_id);
         return response()->json($comentario, 201);
     }
 
@@ -45,6 +46,8 @@ class ComentarioController extends Controller
             'respuesta_id' => $comentarioPadre->id,
         ]);
         $comentario->save();
+        $notificacionController = new NotificacionController();
+        $notificacionController->crearNotificacionDeRespuestaComentario($comentarioPadre->usuario_id, $comentario->usuario_id, $comentarioPadre->video_id);
         return response()->json($comentario, 201);
     }
 

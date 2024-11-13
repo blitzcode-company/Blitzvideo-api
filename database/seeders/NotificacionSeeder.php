@@ -11,9 +11,9 @@ class NotificacionSeeder extends Seeder
     public function run()
     {
         $notificaciones = [
-            ['mensaje' => 'Nuevo video disponible 1', 'referencia_id' => 1, 'referencia_tipo' => 'video'],
-            ['mensaje' => 'Nuevo video disponible 2', 'referencia_id' => 3, 'referencia_tipo' => 'video'],
-            ['mensaje' => 'Nuevo video disponible 3', 'referencia_id' => 3, 'referencia_tipo' => 'video'],
+            ['mensaje' => 'Nuevo video disponible 1', 'referencia_id' => 1, 'referencia_tipo' => 'new_video'],
+            ['mensaje' => 'Nuevo video disponible 2', 'referencia_id' => 3, 'referencia_tipo' => 'new_video'],
+            ['mensaje' => 'Nuevo video disponible 3', 'referencia_id' => 3, 'referencia_tipo' => 'new_video'],
         ];
 
         foreach ($notificaciones as $notificacionData) {

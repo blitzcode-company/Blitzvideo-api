@@ -4,10 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Notificacion;
 use App\Models\User;
+use App\Models\Video;
 use Illuminate\Http\Request;
 
 class NotificacionController extends Controller
 {
+
+    private function crearNotificacion(int $referencia_id, $mensaje, $referencia_tipo)
+    {
+        return Notificacion::create([
+            'mensaje' => $mensaje,
+            'referencia_id' => $referencia_id,
+            'referencia_tipo' => $referencia_tipo,
+        ]);
+    }
+
     public function crearNotificacionDeVideoSubido(int $usuarioId, int $videoId, $canal)
     {
         $usuario = $this->obtenerUsuario($usuarioId);
@@ -19,7 +30,7 @@ class NotificacionController extends Controller
             return response()->json(['error' => 'El usuario no tiene un canal asociado'], 404);
         }
         $mensaje = "¡El canal " . $canal->nombre . " ha subido un nuevo video!";
-        $notificacion = $this->crearNotificacion($videoId, $mensaje);
+        $notificacion = $this->crearNotificacion($videoId, $mensaje, 'new_video');
         $suscriptores = $canal->suscriptores;
         $this->notificarSuscriptores($suscriptores, $notificacion);
         return response()->json([
@@ -36,15 +47,6 @@ class NotificacionController extends Controller
     private function obtenerCanalDelUsuario(User $usuario)
     {
         return $usuario->canales()->first();
-    }
-
-    private function crearNotificacion(int $videoId, $mensaje)
-    {
-        return Notificacion::create([
-            'mensaje' => $mensaje,
-            'referencia_id' => $videoId,
-            'referencia_tipo' => 'video',
-        ]);
     }
 
     private function notificarSuscriptores($suscriptores, Notificacion $notificacion)
@@ -197,5 +199,74 @@ class NotificacionController extends Controller
     {
 
         $usuario->notificaciones()->detach();
+    }
+
+    public function crearNotificacionDeComentarioEnVideo(int $videoId, int $usuarioIdComentario)
+    {
+        $video = Video::with('canal.user')->findOrFail($videoId);
+        $usuarioPropietario = $video->canal->user;
+        if ($usuarioPropietario->id === $usuarioIdComentario) {
+            return $this->respuestaErrorNotificacionComentario('El propietario no recibe notificación de su propio comentario.');
+        }
+        $mensaje = $this->crearMensajeNotificacionComentario($usuarioIdComentario, $video);
+        $notificacion = $this->crearNotificacion($videoId, $mensaje, 'new_comment');
+        $usuarioPropietario->notificaciones()->attach($notificacion->id, ['leido' => false]);
+
+        return $this->respuestaExitoNotificacionComentario($notificacion, $usuarioPropietario);
+    }
+
+    public function crearNotificacionDeRespuestaComentario(int $usuarioIdComentario, int $usuarioIdRespondedor, int $videoId)
+    {
+        $video = Video::findOrFail($videoId);
+        $usuarioComentario = User::findOrFail($usuarioIdComentario);
+        $usuarioRespondedor = User::findOrFail($usuarioIdRespondedor);
+        if ($usuarioComentario->id === $usuarioRespondedor->id) {
+            return $this->respuestaErrorNotificacionComentario('El usuario no recibe notificación de su propia respuesta.');
+        }
+        $mensaje = $this->crearMensajeNotificacionRespuesta($usuarioIdComentario, $usuarioIdRespondedor, $video);
+        $notificacion = $this->crearNotificacion($videoId, $mensaje, 'new_reply');
+        $usuarioComentario->notificaciones()->attach($notificacion->id, ['leido' => false]);
+
+        return $this->respuestaExitoNotificacionComentario($notificacion, $usuarioComentario);
+    }
+
+    private function respuestaErrorNotificacionComentario(string $mensaje)
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $mensaje,
+        ], 200);
+    }
+
+    private function respuestaExitoNotificacionComentario($notificacion, $usuario)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Notificación creada exitosamente.',
+            'notificacion' => [
+                'id' => $notificacion->id,
+                'mensaje' => $notificacion->mensaje,
+                'referencia_id' => $notificacion->referencia_id,
+                'referencia_tipo' => $notificacion->referencia_tipo,
+                'created_at' => $notificacion->created_at,
+            ],
+            'usuario' => [
+                'id' => $usuario->id,
+                'name' => $usuario->name,
+            ],
+        ], 201);
+    }
+
+    private function crearMensajeNotificacionComentario(int $usuarioIdComentario, $video)
+    {
+        $usuarioComentario = User::findOrFail($usuarioIdComentario);
+        return $usuarioComentario->name . " ha comentado en tu video: " . $video->titulo;
+    }
+
+    private function crearMensajeNotificacionRespuesta(int $usuarioIdComentario, int $usuarioIdRespondedor, $video)
+    {
+        $usuarioComentario = User::findOrFail($usuarioIdComentario);
+        $usuarioRespondedor = User::findOrFail($usuarioIdRespondedor);
+        return $usuarioRespondedor->name . " ha respondido a tu comentario en el video: " . $video->titulo;
     }
 }
