@@ -53,7 +53,8 @@ class VideoController extends Controller
         if ($request->has('etiquetas')) {
             $this->asignarEtiquetas($request, $video->id);
         }
-
+        $notificacionController = new NotificacionController();
+        $notificacionController->crearNotificacionDeVideoSubido($canal->user_id, $video->id, $canal->nombre);
         return response()->json($video, 201);
     }
 

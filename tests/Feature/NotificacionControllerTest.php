@@ -6,6 +6,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Models\Notificacion;
 use App\Models\User;
 use App\Models\Video;
+use App\Models\Canal;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Tests\TestCase;
 
@@ -18,10 +19,11 @@ class NotificacionControllerTest extends TestCase
     {
         $usuario = User::find(2);
         $video = Video::find(5);
+        $canal = $usuario->canales()->first();
         $this->assertNotNull($usuario, 'Usuario con ID 2 no encontrado');
         $this->assertNotNull($video, 'Video con ID 5 no encontrado');
         $controller = new NotificacionController();
-        $response = $controller->crearNotificacionDeVideoSubido($usuario->id, $video->id);
+        $response = $controller->crearNotificacionDeVideoSubido($usuario->id, $video->id, $canal);
         $this->assertEquals(201, $response->getStatusCode());
         $suscriptoresCount = 0;
         foreach ($usuario->canales as $canal) {
@@ -42,9 +44,10 @@ class NotificacionControllerTest extends TestCase
 
     /** @test */
     public function debe_devolver_error_si_el_usuario_no_existe()
-    {
+    {   
+        $canal = Canal::find(2);
         $controller = new NotificacionController();
-        $response = $controller->crearNotificacionDeVideoSubido(999, 5);
+        $response = $controller->crearNotificacionDeVideoSubido(999, 5, $canal);
         $this->assertEquals(404, $response->getStatusCode());
         $this->assertJsonStringEqualsJsonString(
             json_encode([
@@ -57,6 +60,7 @@ class NotificacionControllerTest extends TestCase
     /** @test */
     public function debe_devolver_error_si_el_usuario_no_tiene_canal_asociado()
     {
+        $canal = Canal::find(2);
         $controller = new NotificacionController();
         $usuario = new User();
         $usuario->id = 44444;
@@ -65,7 +69,7 @@ class NotificacionControllerTest extends TestCase
         $usuario->password = bcrypt('password');
         $usuario->save();
         $video = Video::find(5);
-        $response = $controller->crearNotificacionDeVideoSubido($usuario->id, $video->id);
+        $response = $controller->crearNotificacionDeVideoSubido($usuario->id, $video->id, $canal);
         $this->assertEquals(404, $response->getStatusCode());
         $this->assertJsonStringEqualsJsonString(
             json_encode([

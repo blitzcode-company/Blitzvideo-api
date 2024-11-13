@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class NotificacionController extends Controller
 {
-    public function crearNotificacionDeVideoSubido(int $usuarioId, int $videoId)
+    public function crearNotificacionDeVideoSubido(int $usuarioId, int $videoId, $canal)
     {
         $usuario = $this->obtenerUsuario($usuarioId);
         if (!$usuario) {
@@ -18,7 +18,8 @@ class NotificacionController extends Controller
         if (!$canal) {
             return response()->json(['error' => 'El usuario no tiene un canal asociado'], 404);
         }
-        $notificacion = $this->crearNotificacion($videoId);
+        $mensaje = "¡El canal " . $canal->nombre . " ha subido un nuevo video!";
+        $notificacion = $this->crearNotificacion($videoId, $mensaje);
         $suscriptores = $canal->suscriptores;
         $this->notificarSuscriptores($suscriptores, $notificacion);
         return response()->json([
@@ -37,10 +38,10 @@ class NotificacionController extends Controller
         return $usuario->canales()->first();
     }
 
-    private function crearNotificacion(int $videoId)
+    private function crearNotificacion(int $videoId, $mensaje)
     {
         return Notificacion::create([
-            'mensaje' => '¡Nuevo video disponible!',
+            'mensaje' => $mensaje,
             'referencia_id' => $videoId,
             'referencia_tipo' => 'video',
         ]);
@@ -165,7 +166,7 @@ class NotificacionController extends Controller
             return response()->json(['error' => 'Usuario no encontrado'], 404);
         }
         $relacion = $usuario->notificaciones()->where('notificacion_id', $notificacionId)->first();
-    
+
         if (!$relacion) {
             return response()->json(['error' => 'Relación no encontrada'], 404);
         }
@@ -175,7 +176,6 @@ class NotificacionController extends Controller
         }
         return response()->json(['message' => 'Notificación eliminada con éxito'], 200);
     }
-    
 
     public function borrarTodasLasNotificaciones(int $usuarioId)
     {
@@ -189,10 +189,10 @@ class NotificacionController extends Controller
                 $notificacion->delete();
             }
         }
-    
+
         return response()->json(['message' => 'Todas las notificaciones eliminadas con éxito'], 200);
     }
-    
+
     private function borrarTodasLasNotificacionesDeUsuario(User $usuario)
     {
 
