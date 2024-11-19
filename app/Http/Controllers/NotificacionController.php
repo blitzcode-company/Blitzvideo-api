@@ -18,43 +18,61 @@ class NotificacionController extends Controller
             'referencia_tipo' => $referencia_tipo,
         ]);
     }
-
-    public function crearNotificacionDeVideoSubido(int $usuarioId, int $videoId, $canal)
+    public function crearNotificacionDeVideoSubido(int $usuarioId, int $videoId)
     {
         $usuario = $this->obtenerUsuario($usuarioId);
         if (!$usuario) {
             return response()->json(['error' => 'Usuario no encontrado'], 404);
         }
-        $canal = $this->obtenerCanalDelUsuario($usuario);
+    
+        $canal = $this->obtenerCanalDelUsuarioConSuscripcionesActivas($usuario);
         if (!$canal) {
-            return response()->json(['error' => 'El usuario no tiene un canal asociado'], 404);
+            return response()->json(['error' => 'El usuario no tiene un canal con suscripciones activas'], 404);
         }
+    
         $mensaje = "¡El canal " . $canal->nombre . " ha subido un nuevo video!";
         $notificacion = $this->crearNotificacion($videoId, $mensaje, 'new_video');
-        $suscriptores = $canal->suscriptores;
-        $this->notificarSuscriptores($suscriptores, $notificacion);
+    
+        $suscriptoresConNotificacionesActivas = $canal->suscriptores()
+            ->wherePivot('notificaciones', 1)
+            ->get();
+    
+        if ($suscriptoresConNotificacionesActivas->isEmpty()) {
+            return response()->json([
+                'notificacion' => null,
+                'suscriptores_notificados' => 0,
+            ], 200);
+        }
+    
+        $this->notificarSuscriptores($suscriptoresConNotificacionesActivas, $notificacion);
+    
         return response()->json([
             'notificacion' => $notificacion,
-            'suscriptores_notificados' => $suscriptores->count(),
+            'suscriptores_notificados' => $suscriptoresConNotificacionesActivas->count(),
         ], 201);
     }
-
+    
     private function obtenerUsuario(int $usuarioId)
     {
         return User::find($usuarioId);
     }
-
-    private function obtenerCanalDelUsuario(User $usuario)
+    
+    private function obtenerCanalDelUsuarioConSuscripcionesActivas(User $usuario)
     {
-        return $usuario->canales()->first();
+        return $usuario->canales()
+            ->whereHas('suscriptores', function ($query) {
+                $query->where('suscribe.notificaciones', 1);
+            })
+            ->first();
     }
-
+    
     private function notificarSuscriptores($suscriptores, Notificacion $notificacion)
     {
         $suscriptores->each(function ($suscriptor) use ($notificacion) {
             $suscriptor->notificaciones()->attach($notificacion->id, ['leido' => false]);
         });
     }
+    
 
     public function marcarNotificacionComoVista(Request $request)
     {

@@ -25,6 +25,9 @@ class Canal extends Model
 
     public function suscriptores()
     {
-        return $this->belongsToMany(User::class, 'suscribe')->withTimestamps()->withTrashed();
+        return $this->belongsToMany(User::class, 'suscribe')
+                    ->withPivot('notificaciones')
+                    ->withTimestamps()
+                    ->withTrashed();
     }
 }
