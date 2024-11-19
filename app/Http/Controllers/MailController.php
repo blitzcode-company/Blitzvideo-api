@@ -2,29 +2,44 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Mail;
+use App\Jobs\EnviarCorreoJob;
 
 class MailController extends Controller
 {
     public function enviarCorreo($destinatario, $asunto, $mensaje)
     {
-        Mail::send([], [], function ($correo) use ($destinatario, $asunto, $mensaje) {
-            $correo->to($destinatario)
-                ->subject($asunto)
-                ->setBody(view('emails.plantilla', ['asunto' => $asunto, 'mensaje' => $mensaje])->render(), 'text/html');
-        });
+        $data = [
+            'asunto' => $asunto,
+            'mensaje' => $mensaje,
+        ];
+
+        EnviarCorreoJob::dispatch($destinatario, $asunto, $data, 'emails.plantilla')
+            ->onQueue('cola_correo');
 
         return response()->json(['message' => 'Correo enviado exitosamente.']);
     }
 
-    public function enviarCorreoPassword($destinatario, $asunto, $mensaje, $link)
+    public function enviarCorreoPassword($destinatario, $asunto, $link, $name)
     {
-        Mail::send([], [], function ($correo) use ($destinatario, $asunto, $mensaje, $link) {
-            $correo->to($destinatario)
-                ->subject($asunto)
-                ->setBody(view('emails.password', ['asunto' => $asunto, 'mensaje' => $mensaje, 'link' => $link])->render(), 'text/html');
-        });
+        $mensaje = '
+        Está recibiendo este correo electrónico porque recibimos una solicitud de restablecimiento de contraseña para su cuenta.
+        Este enlace para restablecer la contraseña caducará en 60 minutos.
+        Si no solicitó un restablecimiento de contraseña, no es necesario realizar ninguna otra acción.
+        Saludos,
+        Equipo de Blitzvideo.
+        ';
+
+        $data = [
+            'asunto' => $asunto,
+            'mensaje' => $mensaje,
+            'link' => $link,
+            'name' => $name,
+        ];
+
+        EnviarCorreoJob::dispatch($destinatario, $asunto, $data, 'emails.password')
+            ->onQueue('cola_correo');
 
         return response()->json(['message' => 'Correo con botón enviado exitosamente.']);
     }
+
 }
