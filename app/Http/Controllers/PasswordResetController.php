@@ -28,11 +28,6 @@ class PasswordResetController extends Controller
         }
         $token = Password::createToken($user);
         $resetLink = env('VISUALIZER_HOST') . "password/reset?token={$token}&email={$request->email}";
-        $data = [
-            'mensaje' => 'Por favor, haga clic en el enlace para restablecer su contraseña.',
-            'name' => $user->name,
-            'link' => $resetLink,
-        ];
         $mailController = new MailController();
         return $mailController->enviarCorreoPassword($request->email, 'Restablecimiento de Contraseña', $resetLink, $user->name);
     }

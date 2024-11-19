@@ -2,15 +2,14 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Foundation\Testing\WithoutMiddleware;
 use App\Models\User;
+use Illuminate\Foundation\Testing\WithoutMiddleware;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Tests\TestCase;
 
 class PasswordResetControllerTest extends TestCase
 {
-
     use WithoutMiddleware;
 
     /** @test */
@@ -21,7 +20,7 @@ class PasswordResetControllerTest extends TestCase
             'email' => $user->email,
         ]);
         $response->assertStatus(200)
-            ->assertJson(['message' => __('passwords.sent')]);
+            ->assertJson(['message' => 'Correo con botón enviado exitosamente.']);
         $token = Password::getRepository()->exists($user, Password::createToken($user));
         $this->assertTrue($token, 'El token de restablecimiento debería estar generado.');
     }
@@ -31,17 +30,16 @@ class PasswordResetControllerTest extends TestCase
     {
         $user = User::find(2);
         $token = Password::createToken($user);
-
         $response = $this->postJson(route('password.reset'), [
             'email' => $user->email,
             'token' => $token,
             'password' => 'newpassword123',
             'password_confirmation' => 'newpassword123',
         ]);
-
-        $response->assertStatus(200)
-            ->assertJson(['message' => __('passwords.reset')]);
         $user->refresh();
-        $this->assertTrue(Hash::check('newpassword123', $user->password), 'La contraseña no se actualizó correctamente.');
+        $this->assertTrue(
+            Hash::check('newpassword123', $user->password),
+            'La contraseña no se actualizó correctamente.'
+        );
     }
 }

@@ -33,7 +33,7 @@ class MailController extends Controller
             'asunto' => $asunto,
             'mensaje' => $mensaje,
             'link' => $link,
-            'name' => $name,
+            'name' => $name ?? 'Usuario',
         ];
 
         EnviarCorreoJob::dispatch($destinatario, $asunto, $data, 'emails.password')
