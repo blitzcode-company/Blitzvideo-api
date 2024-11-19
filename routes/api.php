@@ -113,6 +113,8 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/{canalId}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
         Route::get('/{canal_id}/usuario/{user_id}/suscripcion', [SuscribeController::class, 'VerificarSuscripcion']);
         Route::delete('/{canal_id}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
+        Route::put('/{canalId}/usuario/{userId}/notificaciones/activar', [CanalController::class, 'activarNotificaciones']);
+        Route::put('/{canalId}/usuario/{userId}/notificaciones/desactivar', [CanalController::class, 'desactivarNotificaciones']);
     });
     Route::prefix('etiquetas')->group(function () {
         Route::post('/videos/{idVideo}', [EtiquetaController::class, 'asignarEtiquetas']);

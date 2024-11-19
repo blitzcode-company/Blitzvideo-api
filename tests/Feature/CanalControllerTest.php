@@ -7,6 +7,7 @@ use Illuminate\Http\Response;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Canal;
+use App\Models\Suscribe;
 use App\Http\Controllers\CanalController;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Testing\TestResponse;
@@ -124,4 +125,26 @@ class CanalControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson(['message' => 'Tu canal y todos tus videos se han dado de baja correctamente']);
     }
+
+    public function testActivarNotificaciones()
+    {
+        $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "canal/4/usuario/5/notificaciones/activar");
+        $response->assertStatus(200);
+        $response->assertJson(['message' => 'Notificaciones activadas para el canal']);
+        $suscripcion = Suscribe::where('canal_id', 4)->where('user_id', 5)->first();
+        $suscripcion->refresh();
+        $this->assertEquals(1, $suscripcion->notificaciones, 'Las notificaciones no fueron activadas correctamente');
+    }
+    
+
+    public function testDesactivarNotificaciones()
+    {
+        $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "canal/4/usuario/5/notificaciones/desactivar");
+        $response->assertStatus(200);
+        $response->assertJson(['message' => 'Notificaciones desactivadas para el canal']);
+        $suscripcion = Suscribe::where('canal_id', 4)->where('user_id', 5)->first();
+        $suscripcion->refresh();
+        $this->assertEquals(0, $suscripcion->notificaciones, 'Las notificaciones no fueron desactivadas correctamente');
+    }
+    
 }

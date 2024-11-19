@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Database\QueryException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\Request;
 use App\Models\Canal;
-use App\Models\Video;
+use App\Models\Suscribe;
 use App\Models\User;
+use App\Models\Video;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CanalController extends Controller
 {
@@ -19,41 +20,38 @@ class CanalController extends Controller
     }
 
     public function listarVideosDeCanal($canalId)
-{
-    $videos = Video::where('canal_id', $canalId)
-        ->with([
-            'canal:id,nombre,portada,descripcion,user_id',
-            'canal.user:id,name,foto,email',
-            'etiquetas:id,nombre',
-        ])
-        ->withCount([
-            'puntuaciones as puntuacion_1' => function ($query) {
-                $query->where('valora', 1);
-            },
-            'puntuaciones as puntuacion_2' => function ($query) {
-                $query->where('valora', 2);
-            },
-            'puntuaciones as puntuacion_3' => function ($query) {
-                $query->where('valora', 3);
-            },
-            'puntuaciones as puntuacion_4' => function ($query) {
-                $query->where('valora', 4);
-            },
-            'puntuaciones as puntuacion_5' => function ($query) {
-                $query->where('valora', 5);
-            },
-            'visitas',
-        ])->get();
+    {
+        $videos = Video::where('canal_id', $canalId)
+            ->with([
+                'canal:id,nombre,portada,descripcion,user_id',
+                'canal.user:id,name,foto,email',
+                'etiquetas:id,nombre',
+            ])
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+                'visitas',
+            ])->get();
 
-    $videos->each(function ($video) {
-        $video->promedio_puntuaciones = $video->puntuacion_promedio;
-    });
+        $videos->each(function ($video) {
+            $video->promedio_puntuaciones = $video->puntuacion_promedio;
+        });
 
-    return response()->json($videos, 200);
-}
-
-
-
+        return response()->json($videos, 200);
+    }
 
     public function crearCanal(Request $request, $userId)
     {
@@ -68,7 +66,7 @@ class CanalController extends Controller
         $this->guardarCanal($canal);
         return response()->json(['message' => 'Canal creado correctamente'], 201);
     }
-  
+
     public function darDeBajaCanal($canalId)
     {
         try {
@@ -89,32 +87,32 @@ class CanalController extends Controller
 
     public function editarCanal(Request $request, $canalId)
     {
-    
+
         try {
             $datosValidados = $this->validarDatosDeEdicionDeCanal($request);
-            
+
             $canal = Canal::findOrFail($canalId);
-            
+
             if ($request->has('nombre')) {
-                $canal->nombre = $request->input('nombre'); 
+                $canal->nombre = $request->input('nombre');
             }
-    
+
             if ($request->has('descripcion')) {
-                $canal->descripcion = $request->input('descripcion'); 
+                $canal->descripcion = $request->input('descripcion');
             }
-    
+
             if ($request->hasFile('portada')) {
                 $foto = $request->file('portada');
-                $userId = $canal->user_id; 
+                $userId = $canal->user_id;
                 $folderPath = 'portada/' . $userId;
                 $rutaFoto = $foto->store($folderPath, 's3');
                 $urlFoto = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaFoto));
-                
+
                 $canal->portada = $urlFoto;
             }
-    
+
             $canal->save();
-    
+
             return response()->json(['message' => 'Canal actualizado correctamente', 'canal' => $canal], 200);
         } catch (ModelNotFoundException $exception) {
             return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);
@@ -122,8 +120,6 @@ class CanalController extends Controller
             return response()->json(['message' => 'Ocurrió un error al actualizar tu canal, por favor inténtalo de nuevo más tarde'], 500);
         }
     }
-    
-
 
     private function guardarCanal(Canal $canal)
     {
@@ -167,5 +163,31 @@ class CanalController extends Controller
             $canal->portada = $urlPortada;
 
         }
+    }
+
+    public function activarNotificaciones($canalId, $userId)
+    {
+        $suscripcion = Suscribe::where('canal_id', $canalId)
+            ->where('user_id', $userId)
+            ->first();
+        if (!$suscripcion) {
+            return response()->json(['message' => 'No estás suscrito a este canal'], 404);
+        }
+        $suscripcion->notificaciones = true;
+        $suscripcion->save();
+        return response()->json(['message' => 'Notificaciones activadas para el canal'], 200);
+    }
+
+    public function desactivarNotificaciones($canalId, $userId)
+    {
+        $suscripcion = Suscribe::where('canal_id', $canalId)
+            ->where('user_id', $userId)
+            ->first();
+        if (!$suscripcion) {
+            return response()->json(['message' => 'No estás suscrito a este canal'], 404);
+        }
+        $suscripcion->notificaciones = false;
+        $suscripcion->save();
+        return response()->json(['message' => 'Notificaciones desactivadas para el canal'], 200);
     }
 }
