@@ -14,6 +14,7 @@ class SuscribeSeeder extends Seeder
                 DB::table('suscribe')->insert([
                     'user_id' => $userId,
                     'canal_id' => $canalId,
+                    'notificaciones' => 1,
                 ]);
             }
         }

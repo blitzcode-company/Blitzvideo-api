@@ -24,7 +24,7 @@ class NotificacionControllerTest extends TestCase
         $this->assertNotNull($usuario, 'Usuario con ID 2 no encontrado');
         $this->assertNotNull($video, 'Video con ID 5 no encontrado');
         $controller = new NotificacionController();
-        $response = $controller->crearNotificacionDeVideoSubido($usuario->id, $video->id, $canal);
+        $response = $controller->crearNotificacionDeVideoSubido($usuario->id, $video->id);
         $this->assertEquals(201, $response->getStatusCode());
         $suscriptoresCount = 0;
         foreach ($usuario->canales as $canal) {
@@ -74,7 +74,7 @@ class NotificacionControllerTest extends TestCase
         $this->assertEquals(404, $response->getStatusCode());
         $this->assertJsonStringEqualsJsonString(
             json_encode([
-                'error' => 'El usuario no tiene un canal asociado',
+                'error' => 'El usuario no tiene un canal con suscripciones activas',
             ]),
             $response->getContent()
         );
