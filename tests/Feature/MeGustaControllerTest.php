@@ -162,4 +162,41 @@ class MeGustaControllerTest extends TestCase
             'meGustaId' => MeGusta::where('comentario_id', $comentario->id)->where('usuario_id', $usuario->id)->value('id'),
         ]);
     }
-}
+
+    public function testPuedeContarLaCantidadDeMeGustasDeUnComentario () {
+
+        $usuario = User::first();
+        $video = Video::first();
+        $comentario = Comentario::create([
+            'video_id' => $video->id,
+            'usuario_id' => $usuario->id,
+            'mensaje' => 'Comentario de prueba',
+        ]);
+
+        MeGusta::create([
+            'usuario_id' => $usuario->id,
+            'comentario_id' => $comentario->id,
+        ]);
+
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . 'videos/comentarios/' . $comentario->id . '/contar-me-gusta');
+        $response->assertStatus(200);
+
+        $response->assertJson([
+            'comentario_id' => $comentario->id,
+            'cantidadDeMeGustas' => 1,
+        ]);
+    }
+
+    public function testDevuelveCeroSiNoHayMeGustasParaElComentario() {
+        $idComentario = 10;
+
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . 'videos/comentarios/' . $idComentario . '/contar-me-gusta');
+
+        $response->assertStatus(200);
+
+        $response->assertJson([
+            'comentario_id' => $idComentario,
+            'cantidadDeMeGustas' => 0,
+        ]);
+    }
+ }

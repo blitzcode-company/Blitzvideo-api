@@ -20,16 +20,20 @@ class NotificacionControllerTest extends TestCase
     {
         $usuario = User::find(2);
         $video = Video::find(5);
-        $canal = $usuario->canales()->first();
+    
         $this->assertNotNull($usuario, 'Usuario con ID 2 no encontrado');
         $this->assertNotNull($video, 'Video con ID 5 no encontrado');
+    
+        $canal = $usuario->canales;
+        $this->assertNotNull($canal, 'El usuario no tiene un canal asociado');
+    
         $controller = new NotificacionController();
         $response = $controller->crearNotificacionDeVideoSubido($usuario->id, $video->id);
+    
         $this->assertEquals(201, $response->getStatusCode());
-        $suscriptoresCount = 0;
-        foreach ($usuario->canales as $canal) {
-            $suscriptoresCount += $canal->suscriptores->count();
-        }
+    
+        $suscriptoresCount = $canal->suscriptores()->count();
+    
         $this->assertJsonStringEqualsJsonString(
             json_encode([
                 'notificacion' => $response->getData()->notificacion,
@@ -37,11 +41,13 @@ class NotificacionControllerTest extends TestCase
             ]),
             $response->getContent()
         );
+    
         $this->assertDatabaseHas('notificacion', [
             'referencia_id' => $video->id,
             'referencia_tipo' => 'new_video',
         ]);
     }
+    
 
     /** @test */
     public function debe_devolver_error_si_el_usuario_no_existe()

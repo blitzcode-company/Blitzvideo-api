@@ -69,4 +69,14 @@ class MeGustaController extends Controller
         ]);
     }
 
+    public function ContadorDeMeGustasPorComentario($idComentario) {
+         
+        $cantidadDeMeGustas = MeGusta::where('comentario_id', $idComentario)->count();
+
+        return response()->json([
+            'comentario_id' => $idComentario,
+            'cantidadDeMeGustas' => $cantidadDeMeGustas,
+        ]);
+    }
+
 }

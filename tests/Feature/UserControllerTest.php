@@ -85,7 +85,6 @@ class UserControllerTest extends TestCase
             'email' => $user->email,
         ]);
     }
-
     public function testEditarUsuario()
     {
         $user = User::latest()->first();

@@ -84,6 +84,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'darMeGusta']);
         Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
         Route::get('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'obtenerEstadoMeGusta']);
+        Route::get('/comentarios/{idComentario}/contar-me-gusta', [MeGustaController::class, 'ContadorDeMeGustasPorComentario']);
         Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
         Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);
