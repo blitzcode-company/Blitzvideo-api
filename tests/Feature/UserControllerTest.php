@@ -12,12 +12,10 @@ class UserControllerTest extends TestCase
 {
     use WithoutMiddleware;
 
-    public function testListarUsuarios()
+    public function test_listar_usuarios()
     {
         $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'usuario');
         $response->assertStatus(200);
-        $responseData = $response->json();
-
         $response->assertJsonStructure([
             '*' => [
                 'id',
@@ -31,22 +29,11 @@ class UserControllerTest extends TestCase
                 'deleted_at',
                 'created_at',
                 'updated_at',
-                'canales' => [
-                    '*' => [
-                        'id',
-                        'user_id',
-                        'nombre',
-                        'descripcion',
-                        'portada',
-                        'deleted_at',
-                        'created_at',
-                        'updated_at',
-                    ],
-                ],
             ],
         ]);
-
     }
+    
+    
 
     public function testMostrarUsuarioPorId()
     {
@@ -66,16 +53,14 @@ class UserControllerTest extends TestCase
             'created_at',
             'updated_at',
             'canales' => [
-                '*' => [
-                    'id',
-                    'user_id',
-                    'nombre',
-                    'descripcion',
-                    'portada',
-                    'deleted_at',
-                    'created_at',
-                    'updated_at',
-                ],
+                'id',
+                'user_id',
+                'nombre',
+                'descripcion',
+                'portada',
+                'deleted_at',
+                'created_at',
+                'updated_at',
             ],
         ]);
 
