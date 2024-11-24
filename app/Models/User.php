@@ -58,9 +58,13 @@ class User extends Authenticatable
     public function notificaciones()
     {
         return $this->belongsToMany(Notificacion::class, 'notifica', 'usuario_id', 'notificacion_id')
-                    ->withPivot('leido')
-                    ->withTimestamps();
+            ->withPivot('leido')
+            ->withTimestamps();
     }
-    
+
+    public function streams()
+    {
+        return $this->hasMany(Stream::class);
+    }
 
 }

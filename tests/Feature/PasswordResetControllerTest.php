@@ -33,12 +33,12 @@ class PasswordResetControllerTest extends TestCase
         $response = $this->postJson(route('password.reset'), [
             'email' => $user->email,
             'token' => $token,
-            'password' => 'newpassword123',
-            'password_confirmation' => 'newpassword123',
+            'password' => 'password2',
+            'password_confirmation' => 'password2',
         ]);
         $user->refresh();
         $this->assertTrue(
-            Hash::check('newpassword123', $user->password),
+            Hash::check('password2', $user->password),
             'La contraseña no se actualizó correctamente.'
         );
     }

@@ -21,7 +21,8 @@ class DatabaseSeeder extends Seeder
             TransaccionSeeder::class,
             PublicidadSeeder::class,
             VisitaSeeder::class,
-            NotificacionSeeder::class
+            NotificacionSeeder::class,
+            StreamSeeder::class
         ]);
     }
 }

@@ -12,6 +12,7 @@ use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\ReportaComentarioController;
 use App\Http\Controllers\ReportaController;
 use App\Http\Controllers\ReportaUsuarioController;
+use App\Http\Controllers\StreamController;
 use App\Http\Controllers\SuscribeController;
 use App\Http\Controllers\TransaccionController;
 use App\Http\Controllers\UserController;
@@ -26,6 +27,7 @@ Route::get('/', function () {
 Route::prefix('v1')->group(function () {
     Route::prefix('invitado')->group(function () {
         Route::get('/visita/{videoId}', [VisitaController::class, 'registrarVisitaComoInvitado']);
+        
     });
     Route::prefix('usuario')->group(function () {
         Route::get('/', [UserController::class, 'listarUsuarios']);
@@ -58,6 +60,11 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('password')->group(function () {
         Route::post('/email', [PasswordResetController::class, 'enviarRestablecerEnlaceCorreo']);
+    });
+
+    Route::prefix('streams')->group(function () {
+        Route::get('/', [StreamController::class, 'mostrarTodasLasTransmisiones']);
+        Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
     });
 });
 
@@ -133,5 +140,12 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::get('/usuario/{usuarioId}', [NotificacionController::class, 'listarNotificacionesDelMes']);
         Route::delete('/{notificacionId}/usuario/{usuarioId}', [NotificacionController::class, 'borrarNotificacion']);
         Route::delete('usuario/{usuarioId}', [NotificacionController::class, 'borrarTodasLasNotificaciones']);
+    });
+    Route::prefix('streams')->group(function () {
+        Route::post('/usuario/{usuarioId}', [StreamController::class, 'guardarNuevaTransmision']);
+        Route::put('/{transmision}/usuario/{usuarioId}', [StreamController::class, 'actualizarDatosDeTransmision']);
+        Route::patch('/{transmision}/usuario/{usuarioId}', [StreamController::class, 'cambiarEstadoDeTransmision']);
+        Route::delete('/{transmision}/usuario/{usuarioId}', [StreamController::class, 'eliminarTransmision']);
+        Route::get('/{transmision}/usuario/{usuarioId}', [StreamController::class, 'ListarTransmisionOBS']);
     });
 });
