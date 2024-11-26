@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Helpers\FFMpegHelper;
 use App\Models\Canal;
+use App\Models\Etiqueta;
 use App\Models\Video;
+use Carbon\Carbon;
 use FFMpeg\Coordinate\TimeCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -354,11 +356,117 @@ class VideoController extends Controller
             ->where('acceso', 'publico')
             ->take(8)
             ->get();
-    
+
         $videos->each(function ($video) {
             $video->promedio_puntuaciones = $video->puntuacion_promedio;
         });
-    
+
         return $videos;
     }
+
+    public function listarVideosRecomendados(Request $request, $userId)
+    {
+        $videos = $this->obtenerVideosPersonalizados($userId);
+        return response()->json($videos, 200);
+    }
+
+    public function listarTendencias()
+    {
+        $videos = $this->obtenerVideosTendencias();
+        return response()->json($videos, 200);
+    }
+
+    private function obtenerVideosPersonalizados($userId)
+    {
+        $categoriasMasVisitadas = Etiqueta::select('etiquetas.id', 'etiquetas.nombre')
+            ->join('etiqueta_video', 'etiquetas.id', '=', 'etiqueta_video.etiqueta_id')
+            ->join('visitas', 'etiqueta_video.video_id', '=', 'visitas.video_id')
+            ->where('visitas.user_id', $userId)
+            ->groupBy('etiquetas.id', 'etiquetas.nombre')
+            ->orderByRaw('COUNT(visitas.id) DESC')
+            ->pluck('etiquetas.id');
+
+        $videos = Video::with([
+            'canal:id,nombre,descripcion,user_id',
+            'canal.user:id,name,foto,email',
+            'etiquetas:id,nombre',
+        ])
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+            ])
+            ->withCount('visitas')
+            ->where('bloqueado', false)
+            ->where('acceso', 'publico')
+            ->whereHas('etiquetas', function ($query) use ($categoriasMasVisitadas) {
+                $query->whereIn('etiquetas.id', $categoriasMasVisitadas);
+            })
+            ->orderBy('visitas_count', 'desc')
+            ->take(8)
+            ->get();
+
+        $videos->each(function ($video) {
+            $video->promedio_puntuaciones = $video->puntuacion_promedio;
+        });
+
+        return $videos;
+    }
+
+    private function obtenerVideosTendencias()
+    {
+        $fechaLimite = Carbon::now()->subWeek();
+
+        $videos = Video::with([
+            'canal:id,nombre,descripcion,user_id',
+            'canal.user:id,name,foto,email',
+            'etiquetas:id,nombre',
+        ])
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+            ])
+            ->withCount('visitas')
+            ->where('bloqueado', false)
+            ->where('acceso', 'publico')
+            ->whereDoesntHave('publicidad')
+            ->whereHas('visitas', function ($query) use ($fechaLimite) {
+                $query->where('created_at', '>=', $fechaLimite);
+            })
+            ->orderBy('visitas_count', 'desc')
+            ->take(8)
+            ->get();
+
+        $videos->each(function ($video) {
+            $video->promedio_puntuaciones = $video->puntuacion_promedio;
+        });
+
+        return $videos;
+    }
+
 }

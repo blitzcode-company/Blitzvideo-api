@@ -38,8 +38,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarTodosLosVideos']);
         Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
         Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
+        Route::get('/tendencia/semana', [VideoController::class, 'listarTendencias']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
-
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
@@ -84,6 +84,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/canal/{idCanal}', [VideoController::class, 'subirVideo']);
         Route::post('/{idVideo}', [VideoController::class, 'editarVideo']);
         Route::delete('/{idVideo}', [VideoController::class, 'bajaLogicaVideo']);
+        Route::get('/usuario/{userId}', [VideoController::class, 'listarVideosRecomendados']);
         Route::post('/{idVideo}/comentarios', [ComentarioController::class, 'crearComentario'])->middleware('bloqueo_usuario');
         Route::post('/comentarios/respuesta/{idComentario}', [ComentarioController::class, 'responderComentario'])->middleware('bloqueo_usuario');
         Route::post('/comentarios/{idComentario}', [ComentarioController::class, 'editarComentario'])->middleware('bloqueo_usuario');
@@ -94,7 +95,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::get('/comentarios/{idComentario}/contar-me-gusta', [MeGustaController::class, 'ContadorDeMeGustasPorComentario']);
         Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
-        Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);
+        Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);        
     });
 
     Route::prefix('publicidad')->group(function () {

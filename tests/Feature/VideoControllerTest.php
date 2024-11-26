@@ -10,6 +10,7 @@ use Tests\TestCase;
 class VideoControllerTest extends TestCase
 {
     use WithoutMiddleware;
+
     private function expectedVideoJsonStructure()
     {
         return [
@@ -165,4 +166,21 @@ class VideoControllerTest extends TestCase
         $response->assertStatus(200);
         $this->assertSoftDeleted('videos', ['id' => $video->id]);
     }
+
+    public function testListarVideosRecomendados()
+    {
+        $user = User::first();
+        $this->assertNotNull($user);
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/usuario/{$user->id}");
+        $response->assertStatus(200);
+        $response->assertJsonStructure($this->expectedVideoJsonStructure());
+    }
+
+    public function testListarTendencias()
+    {
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/tendencia/semana");
+        $response->assertStatus(200);
+        $response->assertJsonStructure($this->expectedVideoJsonStructure());
+    }
+
 }
