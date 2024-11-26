@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Stream;
-use App\Models\User;
+use App\Models\Canal;
 
 class StreamSeeder extends Seeder
 {
@@ -15,21 +15,24 @@ class StreamSeeder extends Seeder
      */
     public function run()
     {
-        $usuarios = User::take(5)->get();
-        if ($usuarios->isEmpty()) {
-            $this->command->error('No se encontraron usuarios suficientes en la base de datos.');
+        // Obtener canales existentes, asegurándose de que haya al menos 5
+        $canales = Canal::take(5)->get();
+
+        if ($canales->isEmpty()) {
+            $this->command->error('No se encontraron canales suficientes en la base de datos.');
             return;
         }
-        foreach ($usuarios as $usuario) {
+
+        foreach ($canales as $canal) {
             Stream::create([
-                'titulo' => 'Transmisión de ' . $usuario->name,
-                'descripcion' => 'Esta es una transmisión en vivo realizada por ' . $usuario->name,
+                'titulo' => 'Transmisión del canal ' . $canal->nombre,
+                'descripcion' => 'Esta es una transmisión en vivo del canal ' . $canal->nombre,
                 'stream_key' => uniqid('stream_'),
-                'activo' => true,
-                'user_id' => $usuario->id,
+                'activo' => false,
+                'canal_id' => $canal->id,
             ]);
         }
 
-        $this->command->info('Se han creado transmisiones para los primeros 5 usuarios.');
+        $this->command->info('Se han creado transmisiones para los primeros 5 canales.');
     }
 }

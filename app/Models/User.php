@@ -61,10 +61,4 @@ class User extends Authenticatable
             ->withPivot('leido')
             ->withTimestamps();
     }
-
-    public function streams()
-    {
-        return $this->hasMany(Stream::class);
-    }
-
 }

@@ -14,11 +14,11 @@ class Stream extends Model
         'descripcion',
         'stream_key',
         'activo',
-        'user_id',
+        'canal_id',
     ];
 
-    public function user()
+    public function canal()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Canal::class);
     }
 }

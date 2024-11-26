@@ -30,4 +30,9 @@ class Canal extends Model
                     ->withTimestamps()
                     ->withTrashed();
     }
+
+    public function streams()
+    {
+        return $this->hasMany(Stream::class);
+    }
 }

@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Stream;
-use App\Models\User;
+use App\Models\Canal;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Tests\TestCase;
 
@@ -24,7 +24,7 @@ class StreamControllerTest extends TestCase
     {
         $response = $this->getJson($this->baseUrl);
         $response->assertStatus(200)->assertJsonStructure([
-            '*' => ['id', 'titulo', 'descripcion', 'stream_key', 'activo', 'user_id', 'created_at', 'updated_at'],
+            '*' => ['id', 'titulo', 'descripcion', 'stream_key', 'activo', 'canal_id', 'created_at', 'updated_at'],
         ]);
     }
 
@@ -39,18 +39,13 @@ class StreamControllerTest extends TestCase
                 'titulo',
                 'descripcion',
                 'activo',
-                'user_id',
+                'canal_id',
                 'created_at',
                 'updated_at',
-                'user' => [
+                'canal' => [
                     'id',
-                    'name',
-                    'foto',
-                    'canales' => [
-                        'id',
-                        'nombre',
-                        'user_id',
-                    ],
+                    'nombre',
+                    'user_id',
                 ],
             ],
             'url_hls',
@@ -60,13 +55,16 @@ class StreamControllerTest extends TestCase
     /** @test */
     public function puede_guardar_una_nueva_transmision()
     {
-        $userId = 2;
+        $canalId = 2;
+        $canal = Canal::find($canalId);
+        $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
+
         $data = [
             'titulo' => 'Nueva Transmisión de Prueba',
             'descripcion' => 'Esta es una descripción de prueba',
         ];
 
-        $response = $this->postJson($this->baseUrl . "usuario/{$userId}", $data);
+        $response = $this->postJson($this->baseUrl . "canal/{$canalId}", $data);
 
         $response->assertStatus(201)->assertJson([
             'message' => 'Transmisión creada con éxito.',
@@ -74,27 +72,31 @@ class StreamControllerTest extends TestCase
                 'titulo' => $data['titulo'],
                 'descripcion' => $data['descripcion'],
                 'activo' => false,
-                'user_id' => $userId,
+                'canal_id' => $canalId,
             ],
         ]);
     }
 
-/** @test */
+    /** @test */
     public function puede_actualizar_datos_de_transmision()
     {
-        $userId = 2;
-        $usuario = User::find($userId);
-        $this->assertNotNull($usuario, "El usuario con ID {$userId} no existe.");
-        $transmision = Stream::where('user_id', $userId)->first();
-        $this->assertNotNull($transmision, "No se encontró una transmisión asociada al usuario con ID {$userId}.");
+        $canalId = 2;
+        $canal = Canal::find($canalId);
+        $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
+        
+        $transmision = Stream::where('canal_id', $canalId)->first();
+        $this->assertNotNull($transmision, "No se encontró una transmisión asociada al canal con ID {$canalId}.");
+
         $data = [
             'titulo' => 'Título Actualizado',
             'descripcion' => 'Descripción de transmisión actualizada',
         ];
+
         $response = $this->putJson(
-            $this->baseUrl . "{$transmision->id}/usuario/{$userId}",
+            $this->baseUrl . "{$transmision->id}/canal/{$canalId}",
             $data
         );
+
         $response->assertStatus(200)->assertJson([
             'message' => 'Transmisión actualizada con éxito.',
             'transmision' => [
@@ -103,6 +105,7 @@ class StreamControllerTest extends TestCase
                 'id' => $transmision->id,
             ],
         ]);
+
         $transmision = $transmision->fresh();
         $this->assertEquals($data['titulo'], $transmision->titulo);
         $this->assertEquals($data['descripcion'], $transmision->descripcion);
@@ -111,9 +114,10 @@ class StreamControllerTest extends TestCase
     /** @test */
     public function puede_cambiar_el_estado_de_una_transmision()
     {
-        $userId = 2;
+        $canalId = 2;
         $streamId = 2;
-        $response = $this->patchJson($this->baseUrl . "{$streamId}/usuario/{$userId}");
+
+        $response = $this->patchJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
 
         $response->assertStatus(200)->assertJsonStructure([
             'message', 'transmision' => ['id', 'activo'],
@@ -123,23 +127,24 @@ class StreamControllerTest extends TestCase
     /** @test */
     public function puede_listar_transmision_para_obs()
     {
-        $userId = 2;
+        $canalId = 2;
         $streamId = 2;
-        $response = $this->getJson($this->baseUrl . "{$streamId}/usuario/{$userId}");
+
+        $response = $this->getJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
         $response->assertStatus(200)->assertJsonStructure([
-            'transmision' => ['id', 'titulo', 'descripcion', 'stream_key', 'activo', 'user_id', 'server'],
+            'transmision' => ['id', 'titulo', 'descripcion', 'stream_key', 'activo', 'canal_id', 'server'],
         ]);
     }
 
     /** @test */
     public function puede_eliminar_una_transmision()
     {
-        $userId = 2;
+        $canalId = 2;
         $streamId = 2;
-        $response = $this->deleteJson($this->baseUrl . "{$streamId}/usuario/{$userId}");
+
+        $response = $this->deleteJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
         $response->assertStatus(200)->assertJson([
             'message' => 'Transmisión eliminada con éxito.',
         ]);
     }
-
 }
