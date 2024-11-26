@@ -23,13 +23,12 @@ class VideoController extends Controller
         if ($video->bloqueado) {
             return response()->json([
                 'error' => 'El video está bloqueado y no se puede acceder.',
-                'code' => 403
+                'code' => 403,
             ], 403);
         }
-    
+
         return response()->json($video, 200);
     }
-    
 
     public function listarVideosPorNombre(Request $request, $nombre)
     {
@@ -262,34 +261,37 @@ class VideoController extends Controller
             'canal.user:id,name,foto,email',
             'etiquetas:id,nombre',
         ])
-        ->withCount([
-            'puntuaciones as puntuacion_1' => function ($query) {
-                $query->where('valora', 1);
-            },
-            'puntuaciones as puntuacion_2' => function ($query) {
-                $query->where('valora', 2);
-            },
-            'puntuaciones as puntuacion_3' => function ($query) {
-                $query->where('valora', 3);
-            },
-            'puntuaciones as puntuacion_4' => function ($query) {
-                $query->where('valora', 4);
-            },
-            'puntuaciones as puntuacion_5' => function ($query) {
-                $query->where('valora', 5);
-            },
-            'visitas',
-        ])
-        ->where('bloqueado', false)
-        ->get();
-    
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+                'visitas',
+            ])
+            ->where('bloqueado', false)
+            ->where('acceso', 'publico')
+            ->whereDoesntHave('publicidad')
+            ->inRandomOrder()
+            ->take(8)
+            ->get();
+
         $videos->each(function ($video) {
             $video->promedio_puntuaciones = $video->puntuacion_promedio;
         });
-    
+
         return $videos;
     }
-    
 
     private function obtenerVideoPorId($idVideo)
     {
@@ -322,34 +324,36 @@ class VideoController extends Controller
         return $video;
     }
 
-private function obtenerVideosPorNombre($nombre)
+    private function obtenerVideosPorNombre($nombre)
     {
         $videos = Video::with([
             'canal:id,nombre,descripcion,user_id',
             'canal.user:id,name,foto,email',
             'etiquetas:id,nombre',
         ])
-        ->withCount([
-            'puntuaciones as puntuacion_1' => function ($query) {
-                $query->where('valora', 1);
-            },
-            'puntuaciones as puntuacion_2' => function ($query) {
-                $query->where('valora', 2);
-            },
-            'puntuaciones as puntuacion_3' => function ($query) {
-                $query->where('valora', 3);
-            },
-            'puntuaciones as puntuacion_4' => function ($query) {
-                $query->where('valora', 4);
-            },
-            'puntuaciones as puntuacion_5' => function ($query) {
-                $query->where('valora', 5);
-            },
-            'visitas',
-        ])
-        ->where('titulo', 'LIKE', '%' . $nombre . '%')
-        ->where('bloqueado', false)
-        ->get();
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+                'visitas',
+            ])
+            ->where('titulo', 'LIKE', '%' . $nombre . '%')
+            ->where('bloqueado', false)
+            ->where('acceso', 'publico')
+            ->take(8)
+            ->get();
     
         $videos->each(function ($video) {
             $video->promedio_puntuaciones = $video->puntuacion_promedio;
@@ -357,5 +361,4 @@ private function obtenerVideosPorNombre($nombre)
     
         return $videos;
     }
-    
 }
