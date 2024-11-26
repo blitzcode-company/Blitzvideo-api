@@ -12,6 +12,7 @@ class Stream extends Model
     protected $fillable = [
         'titulo',
         'descripcion',
+        'miniatura',
         'stream_key',
         'activo',
         'canal_id',

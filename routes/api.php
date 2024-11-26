@@ -144,7 +144,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
 
     Route::prefix('streams')->group(function () {
         Route::post('/canal/{canalId}', [StreamController::class, 'guardarNuevaTransmision']);
-        Route::put('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
+        Route::post('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
         Route::patch('/{transmision}/canal/{canalId}', [StreamController::class, 'cambiarEstadoDeTransmision']);
         Route::delete('/{transmision}/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         Route::get('/{transmision}/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);

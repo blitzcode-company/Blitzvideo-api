@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Stream;
 use App\Models\Canal;
+use App\Models\Stream;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class StreamController extends Controller
 {
@@ -26,8 +27,8 @@ class StreamController extends Controller
         ])->findOrFail($transmisionId);
 
         $url_hls = $transmision->activo
-            ? env('STREAM_BASE_LINK') . "{$transmision->stream_key}.m3u8"
-            : null;
+        ? env('STREAM_BASE_LINK') . "{$transmision->stream_key}.m3u8"
+        : null;
 
         $transmision->setHidden(['stream_key']);
 
@@ -44,7 +45,6 @@ class StreamController extends Controller
         $request->validate([
             'titulo' => 'required|string|max:255',
         ]);
-
         $transmision = Stream::create([
             'titulo' => $request->titulo,
             'descripcion' => $request->descripcion,
@@ -52,6 +52,15 @@ class StreamController extends Controller
             'activo' => false,
             'canal_id' => $canal->id,
         ]);
+        if ($request->hasFile('miniatura')) {
+            $miniatura = $request->file('miniatura');
+            $nombreMiniatura = "{$transmision->id}.jpg";
+            $folderPath = "miniaturas-streams/{$canal_id}";
+            $rutaMiniatura = $miniatura->storeAs($folderPath, $nombreMiniatura, 's3');
+            $miniaturaUrl = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaMiniatura));
+            $transmision->miniatura = $miniaturaUrl;
+            $transmision->save();
+        }
 
         return response()->json([
             'message' => 'Transmisión creada con éxito.',
@@ -85,9 +94,18 @@ class StreamController extends Controller
         $request->validate([
             'titulo' => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:255',
+            'miniatura' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-
         $transmision->update($request->only(['titulo', 'descripcion']));
+        if ($request->hasFile('miniatura')) {
+            $miniatura = $request->file('miniatura');
+            $nombreMiniatura = "{$transmision->id}.jpg";
+            $folderPath = "miniaturas-streams/{$canal_id}";
+            $rutaMiniatura = $miniatura->storeAs($folderPath, $nombreMiniatura, 's3');
+            $miniaturaUrl = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaMiniatura));
+            $transmision->miniatura = $miniaturaUrl;
+            $transmision->save();
+        }
 
         return response()->json([
             'message' => 'Transmisión actualizada con éxito.',

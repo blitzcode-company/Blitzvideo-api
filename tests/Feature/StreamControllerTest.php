@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Stream;
 use App\Models\Canal;
+use App\Models\Stream;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class StreamControllerTest extends TestCase
@@ -52,29 +54,39 @@ class StreamControllerTest extends TestCase
         ]);
     }
 
-    /** @test */
+/** @test */
     public function puede_guardar_una_nueva_transmision()
     {
         $canalId = 2;
         $canal = Canal::find($canalId);
         $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
+        Storage::fake('s3');
+        $file = UploadedFile::fake()->image('miniatura.jpg');
 
         $data = [
-            'titulo' => 'Nueva Transmisión de Prueba',
-            'descripcion' => 'Esta es una descripción de prueba',
+            'titulo' => 'Nueva Transmisión con Miniatura',
+            'descripcion' => 'Descripción de prueba con miniatura',
+            'miniatura' => $file,
         ];
-
         $response = $this->postJson($this->baseUrl . "canal/{$canalId}", $data);
-
-        $response->assertStatus(201)->assertJson([
-            'message' => 'Transmisión creada con éxito.',
+        $response->assertStatus(201)->assertJsonStructure([
+            'message',
             'transmision' => [
-                'titulo' => $data['titulo'],
-                'descripcion' => $data['descripcion'],
-                'activo' => false,
-                'canal_id' => $canalId,
+                'id',
+                'titulo',
+                'descripcion',
+                'activo',
+                'canal_id',
             ],
         ]);
+
+        $transmisionId = $response->json('transmision.id');
+        $this->assertNotNull($transmisionId, "No se devolvió el ID de la transmisión en la respuesta.");
+        $transmision = Stream::find($transmisionId);
+        $this->assertNotNull($transmision, "No se encontró la transmisión recién creada en la base de datos.");
+        $expectedPath = "miniaturas-streams/{$canalId}/{$transmision->id}.jpg";
+        Storage::disk('s3')->assertExists($expectedPath);
+        $this->assertStringContainsString($expectedPath, $transmision->miniatura);
     }
 
     /** @test */
@@ -83,16 +95,18 @@ class StreamControllerTest extends TestCase
         $canalId = 2;
         $canal = Canal::find($canalId);
         $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
-        
         $transmision = Stream::where('canal_id', $canalId)->first();
         $this->assertNotNull($transmision, "No se encontró una transmisión asociada al canal con ID {$canalId}.");
+        Storage::fake('s3');
+        $file = UploadedFile::fake()->image('nueva-miniatura.jpg');
 
         $data = [
-            'titulo' => 'Título Actualizado',
-            'descripcion' => 'Descripción de transmisión actualizada',
+            'titulo' => 'Título Actualizado con Miniatura',
+            'descripcion' => 'Descripción actualizada',
+            'miniatura' => $file,
         ];
 
-        $response = $this->putJson(
+        $response = $this->postJson(
             $this->baseUrl . "{$transmision->id}/canal/{$canalId}",
             $data
         );
@@ -105,10 +119,11 @@ class StreamControllerTest extends TestCase
                 'id' => $transmision->id,
             ],
         ]);
-
+        Storage::disk('s3')->assertExists("miniaturas-streams/{$canalId}/{$transmision->id}.jpg");
         $transmision = $transmision->fresh();
         $this->assertEquals($data['titulo'], $transmision->titulo);
         $this->assertEquals($data['descripcion'], $transmision->descripcion);
+        $this->assertStringContainsString("miniaturas-streams/{$canalId}/{$transmision->id}.jpg", $transmision->miniatura);
     }
 
     /** @test */

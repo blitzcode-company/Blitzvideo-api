@@ -17,6 +17,7 @@ class CreateStreamsTable extends Migration
             $table->id();
             $table->string('titulo');
             $table->text('descripcion')->nullable();
+            $table->string('miniatura')->nullable();
             $table->string('stream_key')->unique();
             $table->boolean('activo')->default(false);
             $table->foreignId('canal_id')->constrained()->onDelete('cascade');

@@ -15,7 +15,6 @@ class StreamSeeder extends Seeder
      */
     public function run()
     {
-        // Obtener canales existentes, asegurándose de que haya al menos 5
         $canales = Canal::take(5)->get();
 
         if ($canales->isEmpty()) {
@@ -32,7 +31,5 @@ class StreamSeeder extends Seeder
                 'canal_id' => $canal->id,
             ]);
         }
-
-        $this->command->info('Se han creado transmisiones para los primeros 5 canales.');
     }
 }
