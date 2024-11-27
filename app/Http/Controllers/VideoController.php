@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\FFMpegHelper;
 use App\Models\Canal;
 use App\Models\Etiqueta;
+use App\Models\Publicidad;
 use App\Models\Video;
 use Carbon\Carbon;
 use FFMpeg\Coordinate\TimeCode;
@@ -469,4 +470,38 @@ class VideoController extends Controller
         return $videos;
     }
 
+    public function mostrarPublicidad()
+    {
+        $publicidadSeleccionada = $this->seleccionarPublicidad();
+
+        if (!$publicidadSeleccionada) {
+            return response()->json([
+                'error' => 'No hay publicidades disponibles.',
+                'code' => 404,
+            ], 404);
+        }
+        $videoRelacionado = $publicidadSeleccionada->video()->orderBy('pivot_vistos', 'asc')->first();
+        if (!$videoRelacionado) {
+            return response()->json([
+                'error' => 'No hay videos asociados a esta publicidad.',
+                'code' => 404,
+            ], 404);
+        }
+        $videoRelacionado->pivot->increment('vistos');
+        $video = $this->obtenerVideoPorId($videoRelacionado->id);
+        return response()->json($video, 200);
+    }
+
+    private function seleccionarPublicidad()
+    {
+        $publicidades = Publicidad::with('video')->get();
+        if ($publicidades->isEmpty()) {
+            return null;
+        }
+        $ponderado = $publicidades->flatMap(function ($publicidad) {
+            $repeticiones = $publicidad->prioridad;
+            return array_fill(0, $repeticiones, $publicidad);
+        });
+        return $ponderado->random();
+    }
 }

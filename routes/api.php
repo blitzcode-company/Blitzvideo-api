@@ -66,6 +66,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [StreamController::class, 'mostrarTodasLasTransmisiones']);
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
     });
+    Route::prefix('publicidad')->group(function () {
+        Route::get('/', [VideoController::class, 'mostrarPublicidad']); 
+    });
+
 });
 
 Route::prefix('v1')->middleware('auth.api')->group(function () {
@@ -96,14 +100,6 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
         Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);        
-    });
-
-    Route::prefix('publicidad')->group(function () {
-        Route::post('/', [PublicidadController::class, 'crearPublicidad']);
-        Route::put('/{id}', [PublicidadController::class, 'modificarPublicidad']);
-        Route::delete('/{id}', [PublicidadController::class, 'eliminarPublicidad']);
-        Route::get('/', [PublicidadController::class, 'listarPublicidades']);
-        Route::get('/{publicidadId}/usuario/{userId}', [PublicidadController::class, 'contarVistasPublicidad']);
     });
 
     Route::prefix('playlists')->group(function () {

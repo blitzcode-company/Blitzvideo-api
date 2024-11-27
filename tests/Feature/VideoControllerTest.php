@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Publicidad;
 use App\Models\User;
 use App\Models\Video;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
@@ -11,7 +12,7 @@ class VideoControllerTest extends TestCase
 {
     use WithoutMiddleware;
 
-    private function expectedVideoJsonStructure()
+    private function expectedVideosJsonStructure()
     {
         return [
             '*' => [
@@ -55,28 +56,9 @@ class VideoControllerTest extends TestCase
         ];
     }
 
-    public function testMostrarTodosLosVideos()
+    private function expectedVideoJsonStructure()
     {
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos');
-        $response->assertStatus(200);
-        $response->assertJsonStructure($this->expectedVideoJsonStructure());
-    }
-
-    public function testListarVideosPorNombre()
-    {
-        $nombre = "Título";
-
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos/nombre/' . $nombre);
-        $response->assertStatus(200);
-        $response->assertJsonStructure($this->expectedVideoJsonStructure());
-    }
-
-    public function testMostrarInformacionVideo()
-    {
-        $videoId = Video::first()->id;
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$videoId}");
-        $response->assertStatus(200);
-        $response->assertJsonStructure([
+        return [
             'id',
             'canal_id',
             'titulo',
@@ -114,7 +96,30 @@ class VideoControllerTest extends TestCase
                     ],
                 ],
             ],
-        ]);
+        ];
+    }
+    public function testMostrarTodosLosVideos()
+    {
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos');
+        $response->assertStatus(200);
+        $response->assertJsonStructure($this->expectedVideosJsonStructure());
+    }
+
+    public function testListarVideosPorNombre()
+    {
+        $nombre = "Título";
+
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'videos/nombre/' . $nombre);
+        $response->assertStatus(200);
+        $response->assertJsonStructure($this->expectedVideosJsonStructure());
+    }
+
+    public function testMostrarInformacionVideo()
+    {
+        $videoId = Video::first()->id;
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$videoId}");
+        $response->assertStatus(200);
+        $response->assertJsonStructure($this->expectedVideoJsonStructure());
     }
 
     public function testMostrarInformacionVideoCuandoEstaBloqueado()
@@ -173,14 +178,51 @@ class VideoControllerTest extends TestCase
         $this->assertNotNull($user);
         $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/usuario/{$user->id}");
         $response->assertStatus(200);
-        $response->assertJsonStructure($this->expectedVideoJsonStructure());
+        $response->assertJsonStructure($this->expectedVideosJsonStructure());
     }
 
     public function testListarTendencias()
     {
         $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/tendencia/semana");
         $response->assertStatus(200);
-        $response->assertJsonStructure($this->expectedVideoJsonStructure());
+        $response->assertJsonStructure($this->expectedVideosJsonStructure());
+    }
+
+    public function testMostrarPublicidadConDatosExistentes()
+    {
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'publicidad');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure($this->expectedVideoJsonStructure());
+        $publicidad = Publicidad::first();
+        $this->assertNotNull($publicidad, 'No se encontraron registros de publicidad.');
+    }
+
+    public function testSeleccionPublicidadPorPrioridad()
+    {
+        $publicidades = Publicidad::orderBy('prioridad', 'asc')->get();
+
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'publicidad');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure($this->expectedVideoJsonStructure());
+        $this->assertEquals($publicidades->first()->prioridad, 1, 'La publicidad con mayor prioridad no fue seleccionada.');
+    }
+
+    public function testIncrementarConteoDeVistos()
+    {
+        $publicidad = Publicidad::first();
+        $video = $publicidad->video()->first();
+
+        $this->assertNotNull($video, 'La publicidad no tiene un video asociado.');
+
+        $vistosAntes = $publicidad->video()->where('video_id', $video->id)->first()->pivot->vistos;
+
+        $this->get(env('BLITZVIDEO_BASE_URL') . 'publicidad');
+
+        $vistosDespues = $publicidad->video()->where('video_id', $video->id)->first()->pivot->vistos;
+
+        $this->assertEquals($vistosAntes + 1, $vistosDespues, 'El contador de vistos no se incrementó correctamente.');
     }
 
 }
