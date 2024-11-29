@@ -109,7 +109,7 @@ class PlaylistControllerTest extends TestCase
         $videos = Video::take(3)->get(); 
         $playlist->videos()->attach($videos->pluck('id')); 
 
-        $response = $this->getJson("/api/v1/playlists/{$playlist->id}");
+        $response = $this->getJson("/api/v1/playlists/{$playlist->id}/videos");
     
         $response->assertStatus(Response::HTTP_OK);
     

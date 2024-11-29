@@ -109,16 +109,25 @@ class PlaylistController extends Controller
         ], 200);
     }
 
-    public function ObtenerPlaylistConVideos($playlistId)
+    public function ObtenerPlaylistConVideos(Request $request, $playlistId)
     {
-        $playlist = Playlist::with('videos')->findOrFail($playlistId);
-    
+        $playlist = Playlist::findOrFail($playlistId);
+        
+        $videoId = $request->query('video_id');
+        
+        $fromPlaylist = $request->query('fromPlaylist', false); 
+        
+        $playlistVideos = $playlist->videos()
+            ->when($videoId && $fromPlaylist, function ($query, $videoId) {
+                return $query->where('videos.id', '!=', $videoId); 
+            })
+            ->get();
+        
         return response()->json([
             'playlist' => $playlist,
-            'videos' => $playlist->videos,
+            'videos' => $playlistVideos,
         ], 200);
     }
-
     protected function validarIdsDeVideos(Request $request)
     {
         return $request->validate([

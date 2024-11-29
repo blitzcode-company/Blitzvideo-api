@@ -40,6 +40,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
         Route::get('/tendencia/semana', [VideoController::class, 'listarTendencias']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
+        Route::get('/comentarios/{idComentario}/contar-me-gusta', [MeGustaController::class, 'ContadorDeMeGustasPorComentario']);
+
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
@@ -56,7 +58,7 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('playlists')->group(function () {
         Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
-        Route::get('/{playlistId}', [PlaylistController::class, 'ObtenerPlaylistConVideos']);
+        Route::get('/{playlistId}/videos', [PlaylistController::class, 'ObtenerPlaylistConVideos']);
     });
     Route::prefix('password')->group(function () {
         Route::post('/email', [PasswordResetController::class, 'enviarRestablecerEnlaceCorreo']);
@@ -96,7 +98,6 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'darMeGusta']);
         Route::delete('/comentarios/me-gusta/{idMeGusta}', [MeGustaController::class, 'quitarMeGusta']);
         Route::get('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'obtenerEstadoMeGusta']);
-        Route::get('/comentarios/{idComentario}/contar-me-gusta', [MeGustaController::class, 'ContadorDeMeGustasPorComentario']);
         Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
         Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);        
