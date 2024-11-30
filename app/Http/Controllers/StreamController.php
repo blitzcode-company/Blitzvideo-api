@@ -122,8 +122,19 @@ class StreamController extends Controller
             return response()->json(['message' => 'No tienes permiso para eliminar esta transmisión.'], 403);
         }
 
-        $transmision->delete();
+        $archivoCorrespondiente = $this->obtenerArchivoCorrespondiente($transmision);
+        if ($archivoCorrespondiente) {
+            $rutaArchivo = $this->obtenerRutaArchivo($archivoCorrespondiente);
+            if (file_exists($rutaArchivo)) {
+                unlink($rutaArchivo);
+            }
+            $transmision->delete();
+            return response()->json([
+                'message' => 'Transmisión y video eliminados con éxito.',
+            ]);
+        }
 
+        $transmision->delete();
         return response()->json([
             'message' => 'Transmisión eliminada con éxito.',
         ]);
