@@ -147,6 +147,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/{transmision}/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         Route::get('/{transmision}/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
         Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
+        Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
     });
 
 });

@@ -292,4 +292,30 @@ class StreamController extends Controller
         $etiquetasController->asignarEtiquetas($request, $videoId);
     }
 
+    public function descargarStream($streamId)
+    {
+        try {
+            $stream = Stream::findOrFail($streamId);
+            $carpetaPersistencia = "/app/streams/records";
+            $archivo = collect(scandir($carpetaPersistencia))
+                ->first(fn($archivo) => str_starts_with($archivo, $stream->stream_key));
+
+            if (!$archivo) {
+                return response()->json(['error' => 'Archivo del stream no encontrado en la ubicación temporal.'], 404);
+            }
+            $rutaArchivo = $carpetaPersistencia . DIRECTORY_SEPARATOR . $archivo;
+            if (!file_exists($rutaArchivo)) {
+                return response()->json(['error' => 'El archivo del stream no está disponible.'], 404);
+            }
+            return response()->download($rutaArchivo, $stream->titulo . ".flv", [
+                'Content-Type' => 'video/x-flv',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al intentar descargar el archivo del stream.',
+                'detalle' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }
