@@ -146,6 +146,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::patch('/{transmision}/canal/{canalId}', [StreamController::class, 'cambiarEstadoDeTransmision']);
         Route::delete('/{transmision}/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         Route::get('/{transmision}/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
+        Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
     });
 
 });

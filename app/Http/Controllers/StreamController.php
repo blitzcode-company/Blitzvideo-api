@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Canal;
 use App\Models\Stream;
+use App\Models\Video;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -147,4 +148,148 @@ class StreamController extends Controller
             'transmision' => $transmision,
         ]);
     }
+
+    public function subirVideoDeStream($streamId, Request $request)
+    {
+        try {
+            $stream = $this->obtenerStream($streamId);
+            $archivoCorrespondiente = $this->obtenerArchivoCorrespondiente($stream);
+
+            $rutaArchivo = $this->obtenerRutaArchivo($archivoCorrespondiente);
+            $rutaMiniatura = $this->procesarMiniatura($stream);
+            $rutaS3 = $this->subirArchivoAMinIO($stream, $rutaArchivo);
+
+            $urlVideo = Storage::disk('s3')->url($rutaS3);
+            $video = $this->crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo);
+
+            if ($request->has('etiquetas') && is_array($request->etiquetas)) {
+                $this->asignarEtiquetas($request, $video->id);
+            }
+
+            return response()->json([
+                'mensaje' => 'El video y la miniatura se subieron correctamente.',
+                'video_url' => $urlVideo,
+                'miniatura_url' => Storage::disk('s3')->url($rutaMiniatura),
+                'video_id' => $video->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al subir el video a MinIO.',
+                'detalle' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function obtenerStream($streamId)
+    {
+        $stream = Stream::where('id', $streamId)->first();
+        if (!$stream) {
+            throw new \Exception('No se encontró un stream con esa clave.');
+        }
+        return $stream;
+    }
+
+    private function obtenerArchivoCorrespondiente($stream)
+    {
+        $carpetaPersistencia = "/app/streams/records";
+        $archivo = collect(scandir($carpetaPersistencia))
+            ->first(fn($archivo) => str_starts_with($archivo, $stream->stream_key));
+        if (!$archivo) {
+            throw new \Exception('No se encontró ningún archivo correspondiente al nombre del stream.');
+        }
+        return $archivo;
+    }
+
+    private function obtenerRutaArchivo($archivoCorrespondiente)
+    {
+        $carpetaPersistencia = "/app/streams/records";
+        return $carpetaPersistencia . DIRECTORY_SEPARATOR . $archivoCorrespondiente;
+    }
+
+    private function procesarMiniatura($stream)
+    {
+        $rutaMiniaturaAntigua = "miniaturas-streams/{$stream->canal_id}/{$stream->id}.jpg";
+        $nuevoNombreMiniatura = "miniaturas/{$stream->canal_id}/" . uniqid() . '.jpg';
+
+        if (Storage::disk('s3')->exists($rutaMiniaturaAntigua)) {
+            $contenidoMiniatura = Storage::disk('s3')->get($rutaMiniaturaAntigua);
+            Storage::disk('s3')->put($nuevoNombreMiniatura, $contenidoMiniatura);
+            Storage::disk('s3')->delete($rutaMiniaturaAntigua);
+        } else {
+            throw new \Exception("No se encontró la miniatura en la ubicación original.");
+        }
+
+        return $nuevoNombreMiniatura;
+    }
+
+    private function subirArchivoAMinIO($stream, $rutaArchivo)
+    {
+        $carpetaCanal = "videos/" . $stream->canal_id;
+        $nombreArchivo = bin2hex(random_bytes(16)) . '.flv';
+        $rutaS3 = $carpetaCanal . "/" . $nombreArchivo;
+
+        Storage::disk('s3')->put($rutaS3, file_get_contents($rutaArchivo), [
+            'Metadata' => [
+                'nombre_stream' => $stream->titulo,
+                'descripcion' => $stream->descripcion,
+            ],
+        ]);
+
+        return $rutaS3;
+    }
+
+    private function crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo)
+    {
+        $duracion = $this->obtenerDuracionDeVideo($rutaArchivo);
+
+        $video = Video::create([
+            'titulo' => $stream->titulo,
+            'descripcion' => $stream->descripcion,
+            'link' => $urlVideo,
+            'miniatura' => Storage::disk('s3')->url($rutaMiniatura),
+            'duracion' => $duracion,
+            'bloqueado' => false,
+            'acceso' => 'publico',
+            'canal_id' => $stream->canal_id,
+        ]);
+
+        $stream->delete();
+
+        if (file_exists($rutaArchivo)) {
+            unlink($rutaArchivo);
+        }
+
+        return $video;
+    }
+
+    private function obtenerDuracionDeVideo($rutaArchivo)
+    {
+        try {
+            $rutaCompleta = base_path($rutaArchivo);
+
+            if (!file_exists($rutaCompleta)) {
+                throw new \Exception("Archivo no encontrado.");
+            }
+
+            $ffprobe = \FFMpeg\FFProbe::create();
+            $duracionTotalDelVideo = $ffprobe
+                ->format($rutaCompleta)
+                ->get('duration');
+
+            if ($duracionTotalDelVideo !== null) {
+                return (int) floor($duracionTotalDelVideo);
+            }
+
+            throw new \Exception("No se pudo obtener la duración del video.");
+        } catch (\Exception $e) {
+            throw $e;
+        }
+    }
+
+    private function asignarEtiquetas($request, $videoId)
+    {
+        $etiquetasController = new EtiquetaController();
+        $etiquetasController->asignarEtiquetas($request, $videoId);
+    }
+
 }
