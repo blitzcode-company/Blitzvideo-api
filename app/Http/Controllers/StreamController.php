@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Canal;
@@ -19,23 +18,18 @@ class StreamController extends Controller
     public function verTransmision($transmisionId)
     {
         $transmision = Stream::with([
-            'canal' => function ($query) {
-                $query->select('id', 'nombre', 'user_id');
+            'canal'      => function ($query) {
+                $query->select('id', 'nombre', 'user_id', 'stream_key');
             },
             'canal.user' => function ($query) {
                 $query->select('id', 'name', 'foto');
             },
         ])->findOrFail($transmisionId);
-
-        $url_hls = $transmision->activo
-        ? env('STREAM_BASE_LINK') . "{$transmision->stream_key}.m3u8"
-        : null;
-
+        $url_hls = env('STREAM_BASE_LINK') . "{$transmision->canal->stream_key}.m3u8";
         $transmision->setHidden(['stream_key']);
-
         return response()->json([
             'transmision' => $transmision,
-            'url_hls' => $url_hls,
+            'url_hls'     => $url_hls,
         ], 200, [], JSON_UNESCAPED_SLASHES);
     }
 
@@ -47,24 +41,22 @@ class StreamController extends Controller
             'titulo' => 'required|string|max:255',
         ]);
         $transmision = Stream::create([
-            'titulo' => $request->titulo,
+            'titulo'      => $request->titulo,
             'descripcion' => $request->descripcion,
-            'stream_key' => bin2hex(random_bytes(16)),
-            'activo' => false,
-            'canal_id' => $canal->id,
+            'canal_id'    => $canal->id,
         ]);
         if ($request->hasFile('miniatura')) {
-            $miniatura = $request->file('miniatura');
-            $nombreMiniatura = "{$transmision->id}.jpg";
-            $folderPath = "miniaturas-streams/{$canal_id}";
-            $rutaMiniatura = $miniatura->storeAs($folderPath, $nombreMiniatura, 's3');
-            $miniaturaUrl = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaMiniatura));
+            $miniatura              = $request->file('miniatura');
+            $nombreMiniatura        = "{$transmision->id}.jpg";
+            $folderPath             = "miniaturas-streams/{$canal_id}";
+            $rutaMiniatura          = $miniatura->storeAs($folderPath, $nombreMiniatura, 's3');
+            $miniaturaUrl           = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaMiniatura));
             $transmision->miniatura = $miniaturaUrl;
             $transmision->save();
         }
 
         return response()->json([
-            'message' => 'Transmisión creada con éxito.',
+            'message'     => 'Transmisión creada con éxito.',
             'transmision' => $transmision,
         ], 201);
     }
@@ -93,23 +85,23 @@ class StreamController extends Controller
         }
 
         $request->validate([
-            'titulo' => 'required|string|max:255',
+            'titulo'      => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:255',
-            'miniatura' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'miniatura'   => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
         $transmision->update($request->only(['titulo', 'descripcion']));
         if ($request->hasFile('miniatura')) {
-            $miniatura = $request->file('miniatura');
-            $nombreMiniatura = "{$transmision->id}.jpg";
-            $folderPath = "miniaturas-streams/{$canal_id}";
-            $rutaMiniatura = $miniatura->storeAs($folderPath, $nombreMiniatura, 's3');
-            $miniaturaUrl = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaMiniatura));
+            $miniatura              = $request->file('miniatura');
+            $nombreMiniatura        = "{$transmision->id}.jpg";
+            $folderPath             = "miniaturas-streams/{$canal_id}";
+            $rutaMiniatura          = $miniatura->storeAs($folderPath, $nombreMiniatura, 's3');
+            $miniaturaUrl           = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaMiniatura));
             $transmision->miniatura = $miniaturaUrl;
             $transmision->save();
         }
 
         return response()->json([
-            'message' => 'Transmisión actualizada con éxito.',
+            'message'     => 'Transmisión actualizada con éxito.',
             'transmision' => $transmision,
         ]);
     }
@@ -140,52 +132,28 @@ class StreamController extends Controller
         ]);
     }
 
-    public function cambiarEstadoDeTransmision($transmisionId, $canal_id)
-    {
-        $transmision = Stream::findOrFail($transmisionId);
-
-        if ($transmision->canal_id !== (int) $canal_id) {
-            return response()->json(['message' => 'No tienes permiso para cambiar el estado de esta transmisión.'], 403);
-        }
-
-        $transmision->update([
-            'activo' => !$transmision->activo,
-        ]);
-
-        $message = $transmision->activo ? 'Transmisión iniciada.' : 'Transmisión finalizada.';
-
-        return response()->json([
-            'message' => $message,
-            'transmision' => $transmision,
-        ]);
-    }
-
     public function subirVideoDeStream($streamId, Request $request)
     {
         try {
-            $stream = $this->obtenerStream($streamId);
+            $stream                 = $this->obtenerStream($streamId);
             $archivoCorrespondiente = $this->obtenerArchivoCorrespondiente($stream);
-
-            $rutaArchivo = $this->obtenerRutaArchivo($archivoCorrespondiente);
-            $rutaMiniatura = $this->procesarMiniatura($stream);
-            $rutaS3 = $this->subirArchivoAMinIO($stream, $rutaArchivo);
-
-            $urlVideo = Storage::disk('s3')->url($rutaS3);
-            $video = $this->crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo);
-
+            $rutaArchivo            = $this->obtenerRutaArchivo($archivoCorrespondiente);
+            $rutaMiniatura          = $this->procesarMiniatura($stream);
+            $rutaS3                 = $this->subirArchivoAMinIO($stream, $rutaArchivo);
+            $urlVideo               = Storage::disk('s3')->url($rutaS3);
+            $video                  = $this->crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo);
             if ($request->has('etiquetas') && is_array($request->etiquetas)) {
                 $this->asignarEtiquetas($request, $video->id);
             }
-
             return response()->json([
-                'mensaje' => 'El video y la miniatura se subieron correctamente.',
-                'video_url' => $urlVideo,
+                'mensaje'       => 'El video y la miniatura se subieron correctamente.',
+                'video_url'     => $urlVideo,
                 'miniatura_url' => Storage::disk('s3')->url($rutaMiniatura),
-                'video_id' => $video->id,
+                'video_id'      => $video->id,
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Error al subir el video a MinIO.',
+                'error'   => 'Error al subir el video a MinIO.',
                 'detalle' => $e->getMessage(),
             ], 500);
         }
@@ -194,7 +162,7 @@ class StreamController extends Controller
     private function obtenerStream($streamId)
     {
         $stream = Stream::where('id', $streamId)->first();
-        if (!$stream) {
+        if (! $stream) {
             throw new \Exception('No se encontró un stream con esa clave.');
         }
         return $stream;
@@ -203,9 +171,9 @@ class StreamController extends Controller
     private function obtenerArchivoCorrespondiente($stream)
     {
         $carpetaPersistencia = "/app/streams/records";
-        $archivo = collect(scandir($carpetaPersistencia))
-            ->first(fn($archivo) => str_starts_with($archivo, $stream->stream_key));
-        if (!$archivo) {
+        $archivo             = collect(scandir($carpetaPersistencia))
+            ->first(fn($archivo) => str_starts_with($archivo, $stream->canal->stream_key));
+        if (! $archivo) {
             throw new \Exception('No se encontró ningún archivo correspondiente al nombre del stream.');
         }
         return $archivo;
@@ -214,6 +182,7 @@ class StreamController extends Controller
     private function obtenerRutaArchivo($archivoCorrespondiente)
     {
         $carpetaPersistencia = "/app/streams/records";
+
         return $carpetaPersistencia . DIRECTORY_SEPARATOR . $archivoCorrespondiente;
     }
 
@@ -221,7 +190,6 @@ class StreamController extends Controller
     {
         $rutaMiniaturaAntigua = "miniaturas-streams/{$stream->canal_id}/{$stream->id}.jpg";
         $nuevoNombreMiniatura = "miniaturas/{$stream->canal_id}/" . uniqid() . '.jpg';
-
         if (Storage::disk('s3')->exists($rutaMiniaturaAntigua)) {
             $contenidoMiniatura = Storage::disk('s3')->get($rutaMiniaturaAntigua);
             Storage::disk('s3')->put($nuevoNombreMiniatura, $contenidoMiniatura);
@@ -235,14 +203,14 @@ class StreamController extends Controller
 
     private function subirArchivoAMinIO($stream, $rutaArchivo)
     {
-        $carpetaCanal = "videos/" . $stream->canal_id;
+        $carpetaCanal  = "videos/" . $stream->canal_id;
         $nombreArchivo = bin2hex(random_bytes(16)) . '.flv';
-        $rutaS3 = $carpetaCanal . "/" . $nombreArchivo;
+        $rutaS3        = $carpetaCanal . "/" . $nombreArchivo;
 
         Storage::disk('s3')->put($rutaS3, file_get_contents($rutaArchivo), [
             'Metadata' => [
                 'nombre_stream' => $stream->titulo,
-                'descripcion' => $stream->descripcion,
+                'descripcion'   => $stream->descripcion,
             ],
         ]);
 
@@ -251,20 +219,23 @@ class StreamController extends Controller
 
     private function crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo)
     {
+
         $duracion = $this->obtenerDuracionDeVideo($rutaArchivo);
 
         $video = Video::create([
-            'titulo' => $stream->titulo,
+            'titulo'      => $stream->titulo,
             'descripcion' => $stream->descripcion,
-            'link' => $urlVideo,
-            'miniatura' => Storage::disk('s3')->url($rutaMiniatura),
-            'duracion' => $duracion,
-            'bloqueado' => false,
-            'acceso' => 'publico',
-            'canal_id' => $stream->canal_id,
+            'link'        => $urlVideo,
+            'miniatura'   => Storage::disk('s3')->url($rutaMiniatura),
+            'duracion'    => $duracion,
+            'bloqueado'   => false,
+            'acceso'      => 'publico',
+            'canal_id'    => $stream->canal_id,
         ]);
-
-        $stream->delete();
+        if ($video) {
+            $stream->delete();
+        } else {
+        }
 
         if (file_exists($rutaArchivo)) {
             unlink($rutaArchivo);
@@ -276,15 +247,14 @@ class StreamController extends Controller
     private function obtenerDuracionDeVideo($rutaArchivo)
     {
         try {
-            $rutaCompleta = base_path($rutaArchivo);
 
-            if (!file_exists($rutaCompleta)) {
+            if (! file_exists($rutaArchivo)) {
                 throw new \Exception("Archivo no encontrado.");
             }
 
-            $ffprobe = \FFMpeg\FFProbe::create();
+            $ffprobe               = \FFMpeg\FFProbe::create();
             $duracionTotalDelVideo = $ffprobe
-                ->format($rutaCompleta)
+                ->format($rutaArchivo)
                 ->get('duration');
 
             if ($duracionTotalDelVideo !== null) {
@@ -306,16 +276,16 @@ class StreamController extends Controller
     public function descargarStream($streamId)
     {
         try {
-            $stream = Stream::findOrFail($streamId);
+            $stream              = Stream::findOrFail($streamId);
             $carpetaPersistencia = "/app/streams/records";
-            $archivo = collect(scandir($carpetaPersistencia))
-                ->first(fn($archivo) => str_starts_with($archivo, $stream->stream_key));
+            $archivo             = collect(scandir($carpetaPersistencia))
+                ->first(fn($archivo) => str_starts_with($archivo, $stream->canal->stream_key));
 
-            if (!$archivo) {
+            if (! $archivo) {
                 return response()->json(['error' => 'Archivo del stream no encontrado en la ubicación temporal.'], 404);
             }
             $rutaArchivo = $carpetaPersistencia . DIRECTORY_SEPARATOR . $archivo;
-            if (!file_exists($rutaArchivo)) {
+            if (! file_exists($rutaArchivo)) {
                 return response()->json(['error' => 'El archivo del stream no está disponible.'], 404);
             }
             return response()->download($rutaArchivo, $stream->titulo . ".flv", [
@@ -323,7 +293,7 @@ class StreamController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Error al intentar descargar el archivo del stream.',
+                'error'   => 'Error al intentar descargar el archivo del stream.',
                 'detalle' => $e->getMessage(),
             ], 500);
         }

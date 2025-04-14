@@ -17,6 +17,7 @@ class CanalSeeder extends Seeder
                 'nombre' => 'Canal de ' . $user->name,
                 'descripcion' => 'Descripción del canal de ' . $user->name,
                 'user_id' => $user->id,
+                'stream_key' => uniqid('stream_'),
             ]);
         }
     }

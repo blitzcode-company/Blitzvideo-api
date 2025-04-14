@@ -7,7 +7,6 @@ use App\Http\Controllers\MeGustaController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlaylistController;
-use App\Http\Controllers\PublicidadController;
 use App\Http\Controllers\PuntuaController;
 use App\Http\Controllers\ReportaComentarioController;
 use App\Http\Controllers\ReportaController;
@@ -69,9 +68,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
     });
     Route::prefix('publicidad')->group(function () {
-        Route::get('/', [VideoController::class, 'mostrarPublicidad']); 
+        Route::get('/', [VideoController::class, 'mostrarPublicidad']);
     });
-
 });
 
 Route::prefix('v1')->middleware('auth.api')->group(function () {
@@ -100,7 +98,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::get('/comentarios/{idComentario}/me-gusta', [MeGustaController::class, 'obtenerEstadoMeGusta']);
         Route::post('/{idVideo}/puntuacion', [PuntuaController::class, 'puntuar']);
         Route::delete('/{idVideo}/puntuacion/', [PuntuaController::class, 'bajaLogicaPuntuacion']);
-        Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);        
+        Route::get('/{idVideo}/puntuacion/{userId}', [PuntuaController::class, 'obtenerPuntuacionActual']);
     });
 
     Route::prefix('playlists')->group(function () {
@@ -143,7 +141,6 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('streams')->group(function () {
         Route::post('/canal/{canalId}', [StreamController::class, 'guardarNuevaTransmision']);
         Route::post('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
-        Route::patch('/{transmision}/canal/{canalId}', [StreamController::class, 'cambiarEstadoDeTransmision']);
         Route::delete('/{transmision}/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         Route::get('/{transmision}/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
         Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);

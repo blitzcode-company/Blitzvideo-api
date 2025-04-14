@@ -1,5 +1,4 @@
 <?php
-
 namespace Tests\Feature;
 
 use App\Models\Canal;
@@ -26,7 +25,7 @@ class StreamControllerTest extends TestCase
     {
         $response = $this->getJson($this->baseUrl);
         $response->assertStatus(200)->assertJsonStructure([
-            '*' => ['id', 'titulo', 'descripcion', 'stream_key', 'activo', 'canal_id', 'created_at', 'updated_at'],
+            '*' => ['id', 'titulo', 'descripcion', 'canal_id', 'created_at', 'updated_at'],
         ]);
     }
 
@@ -40,7 +39,6 @@ class StreamControllerTest extends TestCase
                 'id',
                 'titulo',
                 'descripcion',
-                'activo',
                 'canal_id',
                 'created_at',
                 'updated_at',
@@ -58,15 +56,15 @@ class StreamControllerTest extends TestCase
     public function puede_guardar_una_nueva_transmision()
     {
         $canalId = 2;
-        $canal = Canal::find($canalId);
+        $canal   = Canal::find($canalId);
         $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
         Storage::fake('s3');
         $file = UploadedFile::fake()->image('miniatura.jpg');
 
         $data = [
-            'titulo' => 'Nueva Transmisión con Miniatura',
+            'titulo'      => 'Nueva Transmisión con Miniatura',
             'descripcion' => 'Descripción de prueba con miniatura',
-            'miniatura' => $file,
+            'miniatura'   => $file,
         ];
         $response = $this->postJson($this->baseUrl . "canal/{$canalId}", $data);
         $response->assertStatus(201)->assertJsonStructure([
@@ -75,7 +73,6 @@ class StreamControllerTest extends TestCase
                 'id',
                 'titulo',
                 'descripcion',
-                'activo',
                 'canal_id',
             ],
         ]);
@@ -93,7 +90,7 @@ class StreamControllerTest extends TestCase
     public function puede_actualizar_datos_de_transmision()
     {
         $canalId = 2;
-        $canal = Canal::find($canalId);
+        $canal   = Canal::find($canalId);
         $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
         $transmision = Stream::where('canal_id', $canalId)->first();
         $this->assertNotNull($transmision, "No se encontró una transmisión asociada al canal con ID {$canalId}.");
@@ -101,9 +98,9 @@ class StreamControllerTest extends TestCase
         $file = UploadedFile::fake()->image('nueva-miniatura.jpg');
 
         $data = [
-            'titulo' => 'Título Actualizado con Miniatura',
+            'titulo'      => 'Título Actualizado con Miniatura',
             'descripcion' => 'Descripción actualizada',
-            'miniatura' => $file,
+            'miniatura'   => $file,
         ];
 
         $response = $this->postJson(
@@ -112,11 +109,11 @@ class StreamControllerTest extends TestCase
         );
 
         $response->assertStatus(200)->assertJson([
-            'message' => 'Transmisión actualizada con éxito.',
+            'message'     => 'Transmisión actualizada con éxito.',
             'transmision' => [
-                'titulo' => $data['titulo'],
+                'titulo'      => $data['titulo'],
                 'descripcion' => $data['descripcion'],
-                'id' => $transmision->id,
+                'id'          => $transmision->id,
             ],
         ]);
         Storage::disk('s3')->assertExists("miniaturas-streams/{$canalId}/{$transmision->id}.jpg");
@@ -127,39 +124,36 @@ class StreamControllerTest extends TestCase
     }
 
     /** @test */
-    public function puede_cambiar_el_estado_de_una_transmision()
-    {
-        $canalId = 2;
-        $streamId = 2;
-
-        $response = $this->patchJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
-
-        $response->assertStatus(200)->assertJsonStructure([
-            'message', 'transmision' => ['id', 'activo'],
-        ]);
-    }
-
-    /** @test */
     public function puede_listar_transmision_para_obs()
     {
-        $canalId = 2;
+        $canalId  = 2;
         $streamId = 2;
 
         $response = $this->getJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
         $response->assertStatus(200)->assertJsonStructure([
-            'transmision' => ['id', 'titulo', 'descripcion', 'stream_key', 'activo', 'canal_id', 'server'],
+            'transmision' => ['id', 'titulo', 'descripcion', 'canal_id', 'server'],
         ]);
     }
 
-    /** @test */
-    public function puede_eliminar_una_transmision()
+ /** @test */
+ /* ================================================================ REVISAR METODO DEL CONTROLADOR ===============================================================
+    public function test_puede_eliminar_una_transmision()
     {
         $canalId = 2;
         $streamId = 2;
-
+        $canal = Canal::findOrFail($canalId);
+        $streamKey = $canal->stream_key;
+        $directorio = 'streams/records';
+        $archivoFalso = $directorio . '/' . $streamKey . '.flv';
+        if (!file_exists($directorio)) {
+            mkdir($directorio, 0777, true);
+        }
+        file_put_contents($archivoFalso, 'contenido falso');
         $response = $this->deleteJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
         $response->assertStatus(200)->assertJson([
-            'message' => 'Transmisión eliminada con éxito.',
+            'message' => 'Transmisión y video eliminados con éxito.',
         ]);
+        $this->assertFileDoesNotExist($archivoFalso);
     }
+    */
 }

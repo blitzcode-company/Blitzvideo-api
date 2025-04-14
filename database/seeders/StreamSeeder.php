@@ -26,8 +26,6 @@ class StreamSeeder extends Seeder
             Stream::create([
                 'titulo' => 'Transmisión del canal ' . $canal->nombre,
                 'descripcion' => 'Esta es una transmisión en vivo del canal ' . $canal->nombre,
-                'stream_key' => uniqid('stream_'),
-                'activo' => false,
                 'canal_id' => $canal->id,
             ]);
         }

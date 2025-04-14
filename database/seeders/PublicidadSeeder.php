@@ -62,6 +62,7 @@ class PublicidadSeeder extends Seeder
                 'descripcion' => 'Canal oficial de ' . $empresa['empresa'],
                 'portada' => 'portada.png',
                 'user_id' => $user->id,
+                'stream_key' => uniqid('stream_'),
             ]);
             $video = new Video([
                 'titulo' => $empresa['video']['titulo'],

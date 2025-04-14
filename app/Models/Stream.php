@@ -13,8 +13,6 @@ class Stream extends Model
         'titulo',
         'descripcion',
         'miniatura',
-        'stream_key',
-        'activo',
         'canal_id',
     ];
 
