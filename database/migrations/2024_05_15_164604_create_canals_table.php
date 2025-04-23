@@ -14,7 +14,7 @@ class CreateCanalsTable extends Migration
             $table->string('nombre');
             $table->text('descripcion')->nullable();
             $table->string('portada')->nullable();
-            $table->string('stream_key')->unique();
+            $table->string('stream_key')->unique()->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

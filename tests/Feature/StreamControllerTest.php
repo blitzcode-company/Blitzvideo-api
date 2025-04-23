@@ -25,7 +25,7 @@ class StreamControllerTest extends TestCase
     {
         $response = $this->getJson($this->baseUrl);
         $response->assertStatus(200)->assertJsonStructure([
-            '*' => ['id', 'titulo', 'descripcion', 'canal_id', 'created_at', 'updated_at'],
+            '*' => ['id', 'titulo', 'descripcion', 'activo', 'canal_id', 'created_at', 'updated_at'],
         ]);
     }
 
@@ -46,11 +46,14 @@ class StreamControllerTest extends TestCase
                     'id',
                     'nombre',
                     'user_id',
+                    
                 ],
             ],
             'url_hls',
         ]);
     }
+
+
 
 /** @test */
     public function puede_guardar_una_nueva_transmision()
@@ -123,6 +126,7 @@ class StreamControllerTest extends TestCase
         $this->assertStringContainsString("miniaturas-streams/{$canalId}/{$transmision->id}.jpg", $transmision->miniatura);
     }
 
+  
     /** @test */
     public function puede_listar_transmision_para_obs()
     {
@@ -136,8 +140,8 @@ class StreamControllerTest extends TestCase
     }
 
  /** @test */
- /* ================================================================ REVISAR METODO DEL CONTROLADOR ===============================================================
-    public function test_puede_eliminar_una_transmision()
+/* ================================================================ REVISAR METODO DEL CONTROLADOR =============================================================== 
+public function test_puede_eliminar_una_transmision()
     {
         $canalId = 2;
         $streamId = 2;
@@ -155,5 +159,6 @@ class StreamControllerTest extends TestCase
         ]);
         $this->assertFileDoesNotExist($archivoFalso);
     }
+  
     */
 }

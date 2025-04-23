@@ -10,7 +10,7 @@ class Canal extends Model
     use SoftDeletes;
     protected $table = 'canals';
     protected $fillable = [
-        'nombre', 'descripcion', 'portada', 'user_id',  'stream_key',
+        'nombre', 'descripcion', 'portada', 'user_id','stream_key',
     ];
 
     public function user()

@@ -66,6 +66,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('streams')->group(function () {
         Route::get('/', [StreamController::class, 'mostrarTodasLasTransmisiones']);
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
+        Route::post('/iniciar', [StreamController::class, 'IniciarStream']);
+        Route::post('/finalizar', [StreamController::class, 'FinalizarStream']);
     });
     Route::prefix('publicidad')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarPublicidad']);
@@ -145,6 +147,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::get('/{transmision}/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
         Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
         Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
+     
     });
 
 });
