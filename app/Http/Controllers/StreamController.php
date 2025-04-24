@@ -6,7 +6,6 @@ use App\Models\Stream;
 use App\Models\Video;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 
 class StreamController extends Controller
 {
@@ -19,7 +18,7 @@ class StreamController extends Controller
     public function verTransmision($transmisionId)
     {
         $transmision = Stream::with([
-            'canal' => function ($query) {
+            'canal'      => function ($query) {
                 $query->select('id', 'nombre', 'user_id', 'stream_key');
             },
             'canal.user' => function ($query) {
@@ -28,8 +27,8 @@ class StreamController extends Controller
         ])->findOrFail($transmisionId);
 
         $url_hls = $transmision->activo
-            ? env('STREAM_BASE_LINK') . "{$transmision->canal->stream_key}.m3u8"
-            : null;
+        ? env('STREAM_BASE_LINK') . "{$transmision->canal->stream_key}.m3u8"
+        : null;
 
         return response()->json([
             'transmision' => $transmision,
@@ -47,7 +46,7 @@ class StreamController extends Controller
         $transmision = Stream::create([
             'titulo'      => $request->titulo,
             'descripcion' => $request->descripcion,
-            'activo' => false,
+            'activo'      => false,
             'canal_id'    => $canal->id,
         ]);
         if ($request->hasFile('miniatura')) {
@@ -74,7 +73,7 @@ class StreamController extends Controller
             return response()->json(['message' => 'No tienes permiso para acceder a esta transmisión.'], 403);
         }
 
-        $transmision['server'] = env('RTMP_SERVER');
+        $transmision['server']     = env('RTMP_SERVER');
         $transmision['stream_key'] = $transmision->canal->stream_key;
 
         return response()->json([
@@ -138,9 +137,6 @@ class StreamController extends Controller
         ]);
     }
 
-
-
- 
     public function subirVideoDeStream($streamId, Request $request)
     {
         try {
@@ -188,7 +184,6 @@ class StreamController extends Controller
         return $archivo;
     }
 
-
     private function obtenerRutaArchivo($archivoCorrespondiente)
     {
         $carpetaPersistencia = "/app/streams/records";
@@ -211,7 +206,7 @@ class StreamController extends Controller
         return $nuevoNombreMiniatura;
     }
 
-      private function subirArchivoAMinIO($stream, $rutaArchivo)
+    private function subirArchivoAMinIO($stream, $rutaArchivo)
     {
         $carpetaCanal  = "videos/" . $stream->canal_id;
         $nombreArchivo = bin2hex(random_bytes(16)) . '.flv';
@@ -226,7 +221,6 @@ class StreamController extends Controller
 
         return $rutaS3;
     }
-
 
     private function crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo)
     {
@@ -277,7 +271,6 @@ class StreamController extends Controller
         }
     }
 
-
     private function asignarEtiquetas($request, $videoId)
     {
         $etiquetasController = new EtiquetaController();
@@ -312,64 +305,52 @@ class StreamController extends Controller
 
     public function IniciarStream(Request $request)
     {
-        \Log::info('IniciarStream llamado', ['request' => $request->all()]);
-    
+
         $stream_key = $request->input('name');
-        if (!$stream_key) {
-            \Log::error('No se proporcionó stream_key');
+        if (! $stream_key) {
             return response()->json(['error' => 'Stream key no proporcionado'], 400);
         }
-    
-        \Log::info('Buscando canal con stream_key', ['stream_key' => $stream_key]);
         $canal = Canal::where('stream_key', $stream_key)->first();
-        if (!$canal) {
-            \Log::error('Canal no encontrado para stream_key', ['stream_key' => $stream_key]);
+        if (! $canal) {
             return response()->json(['error' => 'Canal no encontrado'], 404);
         }
-    
-        \Log::info('Buscando la transmisión más reciente no activa para canal', ['canal_id' => $canal->id]);
         $transmision = Stream::where('canal_id', $canal->id)
-                            ->where('activo', false)
-                            ->latest('created_at')
-                            ->first();
-    
-        if (!$transmision) {
-            \Log::warning('No hay transmisiones no activas disponibles', ['canal_id' => $canal->id]);
+            ->where('activo', false)
+            ->latest('created_at')
+            ->first();
+
+        if (! $transmision) {
             return response()->json(['error' => 'No hay transmisiones disponibles para iniciar'], 400);
         }
-    
-        \Log::info('Actualizando transmisión', ['transmision_id' => $transmision->id]);
         $transmision->update(['activo' => true]);
-        \Log::info('Transmisión actualizada a activo', ['transmision_id' => $transmision->id]);
-    
         return response()->json([
-            'message' => 'Stream iniciado',
+            'message'        => 'Stream iniciado',
             'transmision_id' => $transmision->id,
-            'activo' => $transmision->activo
+            'activo'         => $transmision->activo,
         ], 200);
     }
 
-   public function FinalizarStream(Request $request)
-{
-    $stream_key = $request->input('name');
-    $canal = Canal::where('stream_key', $stream_key)->first();
+    public function FinalizarStream(Request $request)
+    {
+        $stream_key = $request->input('name');
+        $canal      = Canal::where('stream_key', $stream_key)->first();
 
-    if (!$canal) {
-        return response()->json(['error' => 'Canal no encontrado'], 404);
+        if (! $canal) {
+            return response()->json(['error' => 'Canal no encontrado'], 404);
+        }
+
+        $transmision = Stream::where('canal_id', $canal->id)
+            ->where('activo', true)
+            ->latest('created_at')
+            ->first();
+
+        if (! $transmision) {
+            return response()->json(['error' => 'No hay transmisiones activas para finalizar'], 400);
+        }
+
+        $transmision->update(['activo' => false]);
+
+        return response()->json(['message' => 'Stream finalizado'], 200);
     }
-
-    $transmision = Stream::where('canal_id', $canal->id)
-        ->where('activo', true) 
-        ->latest('created_at')
-        ->first();
-
-    if (!$transmision) {
-        return response()->json(['error' => 'No hay transmisiones activas para finalizar'], 400);
-    }
-
-    $transmision->update(['activo' => false]);
-
-    return response()->json(['message' => 'Stream finalizado'], 200);
-}
 
 }

@@ -1,9 +1,8 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\Models\Suscribe;
 use App\Models\Canal;
+use App\Models\Suscribe;
 use Illuminate\Http\Request;
 
 class SuscribeController extends Controller
@@ -23,13 +22,13 @@ class SuscribeController extends Controller
         }
 
         $suscribe = Suscribe::create([
-            'user_id' => $request->user_id,
+            'user_id'  => $request->user_id,
             'canal_id' => $canal_id,
         ]);
 
         return response()->json([
             'message' => 'Suscripción creada exitosamente.',
-            'data' => $suscribe,
+            'data'    => $suscribe,
         ], 201);
     }
 
@@ -41,7 +40,7 @@ class SuscribeController extends Controller
             ->where('canal_id', $canal_id)
             ->first();
 
-        if (!$suscribe) {
+        if (! $suscribe) {
             return response()->json([
                 'message' => 'No estás suscrito a este canal.',
             ], 404);
@@ -81,17 +80,31 @@ class SuscribeController extends Controller
     public function ListarSuscripcionesUsuario($user_id)
     {
         $suscripciones = Suscribe::where('user_id', $user_id)
-            ->with(['canal.user' => function ($query) {
-                $query->select('id', 'foto');
-            }])->get();
+            ->with([
+                'canal.user:id,foto',
+                'canal.streams' => function ($query) {
+                    $query->latest()->limit(1);
+                },
+            ])->get();
 
         if ($suscripciones->isEmpty()) {
             return response()->json([
                 'message' => 'Este usuario no tiene suscripciones.',
             ], 404);
         }
-
-        return response()->json($suscripciones, 200);
+        $resultado = $suscripciones->map(function ($suscripcion) {
+            $canal             = $suscripcion->canal;
+            $streamRelacionado = $canal->streams->first();
+            return [
+                'id'           => $canal->id,
+                'nombre'       => $canal->nombre,
+                'descripcion'  => $canal->descripcion,
+                'portada'      => $canal->portada,
+                'user'         => $canal->user,
+                'canal_online' => $streamRelacionado ? (bool) $streamRelacionado->activo : false,
+            ];
+        });
+        return response()->json($resultado, 200);
     }
 
     public function ContarSuscripciones($canal_id)
@@ -99,7 +112,7 @@ class SuscribeController extends Controller
         $numeroSuscripciones = Suscribe::where('canal_id', $canal_id)->count();
 
         return response()->json([
-            'canal_id' => (int) $canal_id,
+            'canal_id'             => (int) $canal_id,
             'numero_suscripciones' => $numeroSuscripciones,
         ]);
     }
