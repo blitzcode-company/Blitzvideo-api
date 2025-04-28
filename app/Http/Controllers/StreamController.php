@@ -72,20 +72,26 @@ class StreamController extends Controller
         ], 201);
     }
 
-    public function ListarTransmisionOBS($transmisionId, $canal_id)
+    public function ListarTransmisionOBS(Request $request, $canalId)
     {
-        $transmision = Stream::findOrFail($transmisionId);
-
-        if ($transmision->canal_id !== (int) $canal_id) {
-            return response()->json(['message' => 'No tienes permiso para acceder a esta transmisión.'], 403);
+        $user_id = $request->input('user_id');
+    
+        if (!$user_id) {
+            return response()->json(['message' => 'El user_id es requerido.'], 400);
         }
-
-        $transmision['server']     = env('RTMP_SERVER');
-        $transmision['stream_key'] = $transmision->canal->stream_key;
-
-        return response()->json([
-            'transmision' => $transmision,
-        ], 200, [], JSON_UNESCAPED_SLASHES);
+    
+        $canal = Canal::where('id', (int) $canalId)->firstOrFail();
+        
+        if ($canal->user_id !== (int) $user_id) {
+            return response()->json(['message' => 'No tienes permiso para acceder a este canal.'], 403);
+        }
+    
+        $response = [
+            'server' => env('RTMP_SERVER'),
+            'stream_key' => $canal->stream_key,
+        ];
+        
+        return response()->json($response, 200, [], JSON_UNESCAPED_SLASHES);
     }
 
     public function actualizarDatosDeTransmision(Request $request, $transmisionId, $canal_id)

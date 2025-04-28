@@ -131,9 +131,8 @@ class StreamControllerTest extends TestCase
     public function puede_listar_transmision_para_obs()
     {
         $canalId  = 2;
-        $streamId = 2;
 
-        $response = $this->getJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
+        $response = $this->getJson($this->baseUrl . "/canal/{$canalId}/rtmp");
         $response->assertStatus(200)->assertJsonStructure([
             'transmision' => ['id', 'titulo', 'descripcion', 'canal_id', 'server'],
         ]);
