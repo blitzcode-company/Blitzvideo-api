@@ -80,7 +80,17 @@ class SuscribeControllerTest extends TestCase
 
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJsonStructure([
-            '*' => ['id', 'user_id', 'canal_id', 'created_at', 'updated_at'],
+            '*' => [
+                'id',
+                'nombre',
+                'descripcion',
+                'portada',
+                'user' => [
+                    'id',
+                    'foto',
+                ],
+                'canal_online'
+            ],
         ]);
     }
 

@@ -6,6 +6,13 @@ use App\Models\Stream;
 use App\Models\Video;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use FFMpeg\FFMpeg;
+use FFMpeg\Format\Video\X264;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+
 
 class StreamController extends Controller
 {
@@ -143,8 +150,9 @@ class StreamController extends Controller
             $stream                 = $this->obtenerStream($streamId);
             $archivoCorrespondiente = $this->obtenerArchivoCorrespondiente($stream);
             $rutaArchivo            = $this->obtenerRutaArchivo($archivoCorrespondiente);
+            $rutaConvertidaMP4      = $this->convertirVideoAFormatoMP4($rutaArchivo);
             $rutaMiniatura          = $this->procesarMiniatura($stream);
-            $rutaS3                 = $this->subirArchivoAMinIO($stream, $rutaArchivo);
+            $rutaS3                 = $this->subirArchivoAMinIO($stream, $rutaConvertidaMP4);
             $urlVideo               = Storage::disk('s3')->url($rutaS3);
             $video                  = $this->crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo);
             if ($request->has('etiquetas') && is_array($request->etiquetas)) {
@@ -187,8 +195,52 @@ class StreamController extends Controller
     private function obtenerRutaArchivo($archivoCorrespondiente)
     {
         $carpetaPersistencia = "/app/streams/records";
-
         return $carpetaPersistencia . DIRECTORY_SEPARATOR . $archivoCorrespondiente;
+    }
+
+    private function convertirVideoAFormatoMP4(string $rutaOriginal): string
+    {
+        if (!file_exists($rutaOriginal)) {
+            throw new \Exception("El archivo no existe en la ruta: {$rutaOriginal}");
+        }
+        if (!is_readable($rutaOriginal)) {
+            throw new \Exception("El archivo no es legible: {$rutaOriginal}");
+        }
+    
+        $rutaMp4 = Str::replaceLast('.flv', '.mp4', $rutaOriginal);
+        $directory = dirname($rutaMp4);
+    
+        if (!is_writable($directory)) {
+            throw new \Exception("La carpeta de destino no es escribible: {$directory}");
+        }
+        $ffmpegPath = env('FFMPEG_BINARIES', '/usr/bin/ffmpeg');
+        $command = [
+            $ffmpegPath,
+            '-y',
+            '-i', $rutaOriginal,
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-c:a', 'aac',
+            '-strict', '-2',
+            '-b:a', '128k',
+            '-movflags', '+faststart',
+            $rutaMp4
+        ];
+        $process = new Process($command);
+        try {
+            $process->mustRun();
+        } catch (ProcessFailedException $exception) {
+            Log::error("Error al convertir el video con FFMpeg CLI", [
+                'error' => $exception->getMessage(),
+                'output' => $process->getErrorOutput(),
+            ]);
+            throw new \Exception("Error al convertir el video: " . $exception->getMessage());
+        }
+        if (!file_exists($rutaMp4)) {
+            throw new \Exception("El archivo MP4 no se generó en: {$rutaMp4}");
+        }
+        return $rutaMp4;
     }
 
     private function procesarMiniatura($stream)
@@ -209,7 +261,7 @@ class StreamController extends Controller
     private function subirArchivoAMinIO($stream, $rutaArchivo)
     {
         $carpetaCanal  = "videos/" . $stream->canal_id;
-        $nombreArchivo = bin2hex(random_bytes(16)) . '.flv';
+        $nombreArchivo = bin2hex(random_bytes(16)) . '.mp4';
         $rutaS3        = $carpetaCanal . "/" . $nombreArchivo;
 
         Storage::disk('s3')->put($rutaS3, file_get_contents($rutaArchivo), [
@@ -284,16 +336,20 @@ class StreamController extends Controller
             $carpetaPersistencia = "/app/streams/records";
             $archivo             = collect(scandir($carpetaPersistencia))
                 ->first(fn($archivo) => str_starts_with($archivo, $stream->canal->stream_key));
-
+    
             if (! $archivo) {
                 return response()->json(['error' => 'Archivo del stream no encontrado en la ubicación temporal.'], 404);
             }
+    
             $rutaArchivo = $carpetaPersistencia . DIRECTORY_SEPARATOR . $archivo;
+    
             if (! file_exists($rutaArchivo)) {
                 return response()->json(['error' => 'El archivo del stream no está disponible.'], 404);
             }
-            return response()->download($rutaArchivo, $stream->titulo . ".flv", [
-                'Content-Type' => 'video/x-flv',
+            $rutaMp4 = $this->convertirVideoAFormatoMP4($rutaArchivo);
+    
+            return response()->download($rutaMp4, $stream->titulo . ".mp4", [
+                'Content-Type' => 'video/mp4',
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -352,5 +408,4 @@ class StreamController extends Controller
 
         return response()->json(['message' => 'Stream finalizado'], 200);
     }
-
 }

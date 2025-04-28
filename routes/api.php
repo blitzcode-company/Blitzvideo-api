@@ -68,6 +68,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
         Route::post('/iniciar', [StreamController::class, 'IniciarStream']);
         Route::post('/finalizar', [StreamController::class, 'FinalizarStream']);
+        Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
     });
     Route::prefix('publicidad')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarPublicidad']);
