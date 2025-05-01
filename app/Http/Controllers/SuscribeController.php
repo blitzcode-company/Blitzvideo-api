@@ -83,7 +83,7 @@ class SuscribeController extends Controller
             ->with([
                 'canal.user:id,foto',
                 'canal.streams' => function ($query) {
-                    $query->latest()->limit(1);
+                    $query->latest();
                 },
             ])->get();
 
@@ -94,7 +94,7 @@ class SuscribeController extends Controller
         }
         $resultado = $suscripciones->map(function ($suscripcion) {
             $canal             = $suscripcion->canal;
-            $streamRelacionado = $canal->streams->first();
+            $streamRelacionado = $canal->streams;
             return [
                 'id'           => $canal->id,
                 'nombre'       => $canal->nombre,

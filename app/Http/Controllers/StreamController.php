@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Canal;
 use App\Models\Stream;
 use App\Models\Video;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -43,16 +44,26 @@ class StreamController extends Controller
     public function guardarNuevaTransmision(Request $request, $canal_id)
     {
         $canal = Canal::findOrFail($canal_id);
-
         $request->validate([
             'titulo' => 'required|string|max:255',
         ]);
-        $transmision = Stream::create([
-            'titulo'      => $request->titulo,
-            'descripcion' => $request->descripcion,
-            'activo'      => false,
-            'canal_id'    => $canal->id,
-        ]);
+        try {
+            $transmision = Stream::create([
+                'titulo'      => $request->titulo,
+                'descripcion' => $request->descripcion,
+                'activo'      => false,
+                'canal_id'    => $canal->id,
+            ]);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return response()->json([
+                    'stream'      => true,
+                    'message'     => 'Ya existe una transmisión asociada a este canal.',
+                    'transmision' => $canal->fresh()->streams,
+                ], 200);
+            }
+            throw $e;
+        }
         if ($request->hasFile('miniatura')) {
             $miniatura              = $request->file('miniatura');
             $nombreMiniatura        = "{$transmision->id}.jpg";
@@ -62,7 +73,6 @@ class StreamController extends Controller
             $transmision->miniatura = $miniaturaUrl;
             $transmision->save();
         }
-
         return response()->json([
             'message'     => 'Transmisión creada con éxito.',
             'transmision' => $transmision,
@@ -121,31 +131,29 @@ class StreamController extends Controller
         ]);
     }
 
-    public function eliminarTransmision($transmisionId, $canal_id)
-    {
-        $transmision = Stream::findOrFail($transmisionId);
+        public function eliminarTransmision($canal_id)
+        {
+            $canal       = Canal::findOrFail($canal_id);
+            $transmision = $canal->streams;
 
-        if ($transmision->canal_id !== (int) $canal_id) {
-            return response()->json(['message' => 'No tienes permiso para eliminar esta transmisión.'], 403);
-        }
-
-        $archivoCorrespondiente = $this->obtenerArchivoCorrespondiente($transmision);
-        if ($archivoCorrespondiente) {
-            $rutaArchivo = $this->obtenerRutaArchivo($archivoCorrespondiente);
-            if (file_exists($rutaArchivo)) {
-                unlink($rutaArchivo);
+            if (! $transmision) {
+                return response()->json(['message' => 'No se encontró ninguna transmisión asociada a este canal.'], 404);
             }
+
+            $archivoCorrespondiente = $this->obtenerArchivoCorrespondiente($transmision);
+            if ($archivoCorrespondiente) {
+                $rutaArchivo = $this->obtenerRutaArchivo($archivoCorrespondiente);
+                if ($rutaArchivo && file_exists($rutaArchivo)) {
+                    @unlink($rutaArchivo);
+                }
+            }
+
             $transmision->delete();
+
             return response()->json([
-                'message' => 'Transmisión y video eliminados con éxito.',
+                'message' => 'Transmisión eliminada con éxito.',
             ]);
         }
-
-        $transmision->delete();
-        return response()->json([
-            'message' => 'Transmisión eliminada con éxito.',
-        ]);
-    }
 
     public function subirVideoDeStream($streamId, Request $request)
     {
@@ -169,7 +177,7 @@ class StreamController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error'   => 'Error al subir el video a MinIO.',
+                'error'   => 'Error al subir el video.',
                 'detalle' => $e->getMessage(),
             ], 500);
         }
@@ -187,13 +195,12 @@ class StreamController extends Controller
     private function obtenerArchivoCorrespondiente($stream)
     {
         $carpetaPersistencia = "/app/streams/records";
-        $archivo             = collect(scandir($carpetaPersistencia))
+        $archivo = collect(scandir($carpetaPersistencia))
             ->first(fn($archivo) => str_starts_with($archivo, $stream->canal->stream_key));
-        if (! $archivo) {
-            throw new \Exception('No se encontró ningún archivo correspondiente al nombre del stream.');
-        }
-        return $archivo;
+    
+        return $archivo ?: null;
     }
+    
 
     private function obtenerRutaArchivo($archivoCorrespondiente)
     {
@@ -277,11 +284,11 @@ class StreamController extends Controller
     private function crearVideo($stream, $urlVideo, $rutaMiniatura, $rutaArchivo)
     {
 
-        $duracion = $this->obtenerDuracionDeVideo($rutaArchivo);
-        $urlVideo = str_replace('minio', 'localhost', $urlVideo);
+        $duracion     = $this->obtenerDuracionDeVideo($rutaArchivo);
+        $urlVideo     = str_replace('minio', 'localhost', $urlVideo);
         $urlminiatura = Storage::disk('s3')->url($rutaMiniatura);
         $urlminiatura = str_replace('minio', 'localhost', $urlminiatura);
-        
+
         $video = Video::create([
             'titulo'      => $stream->titulo,
             'descripcion' => $stream->descripcion,

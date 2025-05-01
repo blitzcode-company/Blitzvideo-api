@@ -33,6 +33,6 @@ class Canal extends Model
 
     public function streams()
     {
-        return $this->hasMany(Stream::class);
+        return $this->hasOne(Stream::class);
     }
 }

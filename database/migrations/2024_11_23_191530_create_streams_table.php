@@ -19,7 +19,7 @@ class CreateStreamsTable extends Migration
             $table->text('descripcion')->nullable();
             $table->string('miniatura')->nullable();
             $table->boolean('activo')->default(false);
-            $table->foreignId('canal_id')->constrained()->onDelete('cascade');
+            $table->foreignId('canal_id')->unique()->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }

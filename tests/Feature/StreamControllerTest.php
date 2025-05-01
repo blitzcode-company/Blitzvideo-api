@@ -46,14 +46,12 @@ class StreamControllerTest extends TestCase
                     'id',
                     'nombre',
                     'user_id',
-                    
+
                 ],
             ],
             'url_hls',
         ]);
     }
-
-
 
 /** @test */
     public function puede_guardar_una_nueva_transmision()
@@ -61,9 +59,12 @@ class StreamControllerTest extends TestCase
         $canalId = 2;
         $canal   = Canal::find($canalId);
         $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
+        $transmisionExistente = $canal->streams;
+        if ($transmisionExistente) {
+            $transmisionExistente->delete();
+        }
         Storage::fake('s3');
         $file = UploadedFile::fake()->image('miniatura.jpg');
-
         $data = [
             'titulo'      => 'Nueva Transmisión con Miniatura',
             'descripcion' => 'Descripción de prueba con miniatura',
@@ -79,7 +80,6 @@ class StreamControllerTest extends TestCase
                 'canal_id',
             ],
         ]);
-
         $transmisionId = $response->json('transmision.id');
         $this->assertNotNull($transmisionId, "No se devolvió el ID de la transmisión en la respuesta.");
         $transmision = Stream::find($transmisionId);
@@ -126,38 +126,29 @@ class StreamControllerTest extends TestCase
         $this->assertStringContainsString("miniaturas-streams/{$canalId}/{$transmision->id}.jpg", $transmision->miniatura);
     }
 
-  
     /** @test */
     public function puede_listar_transmision_para_obs()
     {
-        $canalId  = 2;
-
-        $response = $this->getJson($this->baseUrl . "/canal/{$canalId}/rtmp");
-        $response->assertStatus(200)->assertJsonStructure([
-            'transmision' => ['id', 'titulo', 'descripcion', 'canal_id', 'server'],
-        ]);
-    }
-
- /** @test */
-/* ================================================================ REVISAR METODO DEL CONTROLADOR =============================================================== 
-public function test_puede_eliminar_una_transmision()
-    {
         $canalId = 2;
-        $streamId = 2;
-        $canal = Canal::findOrFail($canalId);
-        $streamKey = $canal->stream_key;
-        $directorio = 'streams/records';
-        $archivoFalso = $directorio . '/' . $streamKey . '.flv';
-        if (!file_exists($directorio)) {
-            mkdir($directorio, 0777, true);
-        }
-        file_put_contents($archivoFalso, 'contenido falso');
-        $response = $this->deleteJson($this->baseUrl . "{$streamId}/canal/{$canalId}");
-        $response->assertStatus(200)->assertJson([
-            'message' => 'Transmisión y video eliminados con éxito.',
+        $canal   = Canal::find($canalId);
+        $this->assertNotNull($canal, "El canal con ID {$canalId} no existe.");
+        $url      = $this->baseUrl . "canal/{$canalId}?user_id={$canal->user_id}";
+        $response = $this->getJson($url);
+        $response->assertStatus(200)->assertJsonStructure([
+            'server',
+            'stream_key',
         ]);
-        $this->assertFileDoesNotExist($archivoFalso);
     }
-  
-    */
+
+    /** @test *//*
+
+    public function test_puede_eliminar_una_transmision()
+    {
+        $canalId  = 2;
+        $response = $this->deleteJson($this->baseUrl . "canal/{$canalId}");
+        $response->assertStatus(200)->assertJson([
+            'message' => 'Transmisión eliminada con éxito.',
+        ]);
+    }
+*/
 }

@@ -142,11 +142,11 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     });
 
     Route::prefix('streams')->group(function () {
-        Route::get('/canal/{canalId}/rtmp', [StreamController::class, 'ListarTransmisionOBS']);
+        Route::get('/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
 
         Route::post('/canal/{canalId}', [StreamController::class, 'guardarNuevaTransmision']);
         Route::post('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
-        Route::delete('/{transmision}/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
+        Route::delete('/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
         Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
      
