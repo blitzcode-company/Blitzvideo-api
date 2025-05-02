@@ -128,23 +128,36 @@ class CanalControllerTest extends TestCase
 
     public function testActivarNotificaciones()
     {
-        $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "canal/4/usuario/5/notificaciones/activar");
+        $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "canal/4/usuario/5/notificacion", [
+            'estado' => true
+        ]);
+
         $response->assertStatus(200);
         $response->assertJson(['message' => 'Notificaciones activadas para el canal']);
+
         $suscripcion = Suscribe::where('canal_id', 4)->where('user_id', 5)->first();
-        $suscripcion->refresh();
         $this->assertEquals(1, $suscripcion->notificaciones, 'Las notificaciones no fueron activadas correctamente');
     }
-    
 
     public function testDesactivarNotificaciones()
     {
-        $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "canal/4/usuario/5/notificaciones/desactivar");
+        $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "canal/4/usuario/5/notificacion", [
+            'estado' => false
+        ]);
+
         $response->assertStatus(200);
         $response->assertJson(['message' => 'Notificaciones desactivadas para el canal']);
+
         $suscripcion = Suscribe::where('canal_id', 4)->where('user_id', 5)->first();
-        $suscripcion->refresh();
         $this->assertEquals(0, $suscripcion->notificaciones, 'Las notificaciones no fueron desactivadas correctamente');
+    }
+    
+    public function testConsultarEstadoNotificaciones()
+    {
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "canal/4/usuario/5/notificacion");
+
+        $response->assertStatus(200);
+        $response->assertJson(['notificaciones' => false]);
     }
     
 }

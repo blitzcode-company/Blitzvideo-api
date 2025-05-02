@@ -116,12 +116,15 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/{userId}', [CanalController::class, 'crearCanal']);
         Route::delete('/{canalId}', [CanalController::class, 'darDeBajaCanal']);
         Route::post('/{canalId}/canal', [CanalController::class, 'editarCanal']);
+
         Route::post('/{canalId}/suscripcion', [SuscribeController::class, 'Suscribirse']);
         Route::delete('/{canalId}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
         Route::get('/{canal_id}/usuario/{user_id}/suscripcion', [SuscribeController::class, 'VerificarSuscripcion']);
-        Route::delete('/{canal_id}/suscripcion', [SuscribeController::class, 'AnularSuscripcion']);
-        Route::put('/{canalId}/usuario/{userId}/notificaciones/activar', [CanalController::class, 'activarNotificaciones']);
-        Route::put('/{canalId}/usuario/{userId}/notificaciones/desactivar', [CanalController::class, 'desactivarNotificaciones']);
+
+        Route::put('/{canalId}/usuario/{userId}/notificacion', [CanalController::class, 'cambiarEstadoNotificaciones']);
+        Route::get('/{canalId}/usuario/{userId}/notificacion', [CanalController::class, 'estadoNotificaciones']);
+        
+
     });
     Route::prefix('etiquetas')->group(function () {
         Route::post('/videos/{idVideo}', [EtiquetaController::class, 'asignarEtiquetas']);

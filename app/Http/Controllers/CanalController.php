@@ -166,29 +166,43 @@ class CanalController extends Controller
         }
     }
 
-    public function activarNotificaciones($canalId, $userId)
-    {
-        $suscripcion = Suscribe::where('canal_id', $canalId)
-            ->where('user_id', $userId)
-            ->first();
-        if (!$suscripcion) {
-            return response()->json(['message' => 'No estás suscrito a este canal'], 404);
-        }
-        $suscripcion->notificaciones = true;
-        $suscripcion->save();
-        return response()->json(['message' => 'Notificaciones activadas para el canal'], 200);
+  public function cambiarEstadoNotificaciones(Request $request, $canalId, $userId)
+{
+    $request->validate([
+        'estado' => 'required|boolean',
+    ]);
+
+    $suscripcion = Suscribe::where('canal_id', $canalId)
+        ->where('user_id', $userId)
+        ->first();
+
+    if (!$suscripcion) {
+        return response()->json(['message' => 'No estás suscrito a este canal'], 404);
     }
 
-    public function desactivarNotificaciones($canalId, $userId)
-    {
-        $suscripcion = Suscribe::where('canal_id', $canalId)
-            ->where('user_id', $userId)
-            ->first();
-        if (!$suscripcion) {
-            return response()->json(['message' => 'No estás suscrito a este canal'], 404);
-        }
-        $suscripcion->notificaciones = false;
-        $suscripcion->save();
-        return response()->json(['message' => 'Notificaciones desactivadas para el canal'], 200);
+    $suscripcion->notificaciones = $request->estado;
+    $suscripcion->save();
+
+    $mensaje = $request->estado
+        ? 'Notificaciones activadas para el canal'
+        : 'Notificaciones desactivadas para el canal';
+
+    return response()->json(['message' => $mensaje], 200);
+}
+
+public function estadoNotificaciones($canalId, $userId)
+{
+    $suscripcion = Suscribe::where('canal_id', $canalId)
+        ->where('user_id', $userId)
+        ->first();
+
+    if (!$suscripcion) {
+        return response()->json(['message' => 'No estás suscrito a este canal'], 404);
     }
+
+    return response()->json([
+        'notificaciones' => (bool) $suscripcion->notificaciones
+    ], 200);
+}
+    
 }

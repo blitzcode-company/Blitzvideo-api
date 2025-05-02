@@ -90,7 +90,7 @@ class SuscribeController extends Controller
         if ($suscripciones->isEmpty()) {
             return response()->json([
                 'message' => 'Este usuario no tiene suscripciones.',
-            ], 404);
+            ], 404); 
         }
         $resultado = $suscripciones->map(function ($suscripcion) {
             $canal             = $suscripcion->canal;
