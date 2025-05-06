@@ -335,7 +335,7 @@ class StreamController extends Controller
         $urlVideo     = str_replace('minio', 'localhost', $urlVideo);
         $urlminiatura = Storage::disk('s3')->url($rutaMiniatura);
         $urlminiatura = str_replace('minio', 'localhost', $urlminiatura);
-        $video = Video::create([
+        $video        = Video::create([
             'titulo'      => $stream->titulo,
             'descripcion' => $stream->descripcion,
             'link'        => $urlVideo,
@@ -384,34 +384,26 @@ class StreamController extends Controller
 
     public function descargarStream($streamId)
     {
-        try {
-            $stream              = Stream::findOrFail($streamId);
-            $carpetaPersistencia = "/app/streams/records";
-            $archivo             = collect(scandir($carpetaPersistencia))
-                ->first(fn($archivo) => str_starts_with($archivo, $stream->canal->stream_key));
-
-            if (! $archivo) {
-                return response()->json(['error' => 'Archivo del stream no encontrado en la ubicación temporal.'], 404);
-            }
-
-            $rutaArchivo = $carpetaPersistencia . DIRECTORY_SEPARATOR . $archivo;
-
-            if (! file_exists($rutaArchivo)) {
-                return response()->json(['error' => 'El archivo del stream no está disponible.'], 404);
-            }
-            $rutaMp4 = $this->convertirVideoAFormatoMP4($rutaArchivo);
-
-            return response()->download($rutaMp4, $stream->titulo . ".mp4", [
-                'Content-Type' => 'video/mp4',
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error'   => 'Error al intentar descargar el archivo del stream.',
-                'detalle' => $e->getMessage(),
-            ], 500);
+        $stream = Stream::findOrFail($streamId);
+        $streamKey = $stream->canal->stream_key;
+        $archivos = Storage::disk('s3')->files('streams');
+        $archivoFLV = collect($archivos)
+            ->filter(fn($ruta) => str_starts_with(basename($ruta), $streamKey) && str_ends_with($ruta, '.flv'))
+            ->sortDesc()
+            ->first();
+    
+        if (!$archivoFLV) {
+            throw new \Exception("No se encontró ningún archivo FLV para la stream key: {$streamKey}");
         }
+        $nombreBase = pathinfo($archivoFLV, PATHINFO_FILENAME);
+        $rutaLocalFlv = $this->descargarArchivoFLVDesdeMinIO($archivoFLV, $nombreBase);
+        $rutaLocalMp4 = $this->convertirFLVaMP4($rutaLocalFlv, $nombreBase);
+        if (file_exists($rutaLocalFlv)) {
+            unlink($rutaLocalFlv);
+        }
+        return response()->download($rutaLocalMp4)->deleteFileAfterSend(true);
     }
-
+    
     public function IniciarStream(Request $request)
     {
 
