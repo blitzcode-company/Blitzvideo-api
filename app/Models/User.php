@@ -17,6 +17,7 @@ class User extends Authenticatable
         'email',
         'password',
         'fecha_de_nacimiento',
+        'bloqueado',
         'premium',
         'foto',
     ];
