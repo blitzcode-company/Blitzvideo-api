@@ -38,8 +38,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
         Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
         Route::get('/tendencia/semana', [VideoController::class, 'listarTendencias']);
+        Route::get('/{idVideo}/relacionados', [VideoController::class, 'listarVideosRelacionados']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
         Route::get('/comentarios/{idComentario}/contar-me-gusta', [MeGustaController::class, 'ContadorDeMeGustasPorComentario']);
+        
 
     });
     Route::prefix('canal')->group(function () {

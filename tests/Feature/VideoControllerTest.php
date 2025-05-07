@@ -187,6 +187,15 @@ class VideoControllerTest extends TestCase
         $response->assertJsonStructure($this->expectedVideosJsonStructure());
     }
 
+    public function testListarVideosRelacionados()
+    {
+        $video = Video::first();
+        $this->assertNotNull($video);
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/relacionados");
+        $response->assertStatus(200);
+        $response->assertJsonStructure($this->expectedVideosJsonStructure());
+    }
+
     public function testMostrarPublicidadConDatosExistentes()
     {
         $response = $this->get(env('BLITZVIDEO_BASE_URL') . 'publicidad');

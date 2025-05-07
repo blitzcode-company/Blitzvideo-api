@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Helpers\FFMpegHelper;
@@ -26,7 +25,7 @@ class VideoController extends Controller
         if ($video->bloqueado) {
             return response()->json([
                 'error' => 'El video está bloqueado y no se puede acceder.',
-                'code' => 403,
+                'code'  => 403,
             ], 403);
         }
 
@@ -43,11 +42,11 @@ class VideoController extends Controller
     {
         $this->validarSubidaDeVideo($request);
 
-        if (!$request->hasFile('video')) {
+        if (! $request->hasFile('video')) {
             return response()->json(['error' => 'No se proporcionó ningún archivo de video'], 400);
         }
 
-        $canal = Canal::findOrFail($canalId);
+        $canal     = Canal::findOrFail($canalId);
         $videoData = $this->procesarVideo($request->file('video'), $canalId);
 
         $video = $this->crearNuevoVideo($request, $canal, $videoData);
@@ -64,7 +63,7 @@ class VideoController extends Controller
     {
         $this->validarEdicionDeVideo($request);
 
-        $user = $request->user();
+        $user            = $request->user();
         $canalDelUsuario = Canal::where('user_id', $user->id)->firstOrFail();
 
         $video = Video::findOrFail($idVideo);
@@ -73,14 +72,14 @@ class VideoController extends Controller
             return response()->json(['message' => 'No tienes permiso para editar este video.'], 403);
         }
 
-        $oldVideoPath = $this->getStoragePath($video->link);
+        $oldVideoPath     = $this->getStoragePath($video->link);
         $oldMiniaturaPath = $this->getStoragePath($video->miniatura);
 
         $this->actualizarCampos($request, $video);
 
         if ($request->hasFile('video')) {
             $newVideoFile = $request->file('video');
-            $duracion = $this->obtenerDuracionDeVideo($newVideoFile);
+            $duracion     = $this->obtenerDuracionDeVideo($newVideoFile);
             $this->reemplazarArchivo($newVideoFile, $video, 'video', $oldVideoPath, $oldMiniaturaPath);
 
             $video->duracion = $duracion;
@@ -111,10 +110,10 @@ class VideoController extends Controller
     private function validarSubidaDeVideo($request)
     {
         $rules = [
-            'titulo' => 'required|string|max:255',
+            'titulo'      => 'required|string|max:255',
             'descripcion' => 'required|string',
-            'video' => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
-            'etiquetas' => 'array',
+            'video'       => 'required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
+            'etiquetas'   => 'array',
         ];
 
         $this->validarRequest($request, $rules);
@@ -123,11 +122,11 @@ class VideoController extends Controller
     private function validarEdicionDeVideo($request)
     {
         $rules = [
-            'titulo' => 'sometimes|required|string|max:255',
+            'titulo'      => 'sometimes|required|string|max:255',
             'descripcion' => 'sometimes|required|string',
-            'video' => 'sometimes|required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
-            'miniatura' => 'sometimes|required|image|mimes:jpeg,png,jpg,gif|max:10240',
-            'duracion' => 'sometimes|required|int|',
+            'video'       => 'sometimes|required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
+            'miniatura'   => 'sometimes|required|image|mimes:jpeg,png,jpg,gif|max:10240',
+            'duracion'    => 'sometimes|required|int|',
         ];
 
         $this->validarRequest($request, $rules);
@@ -135,8 +134,8 @@ class VideoController extends Controller
 
     private function procesarVideo($videoFile, $canalId)
     {
-        $rutaVideo = $this->guardarArchivo($videoFile, 'videos/' . $canalId);
-        $urlVideo = $this->generarUrl($rutaVideo);
+        $rutaVideo    = $this->guardarArchivo($videoFile, 'videos/' . $canalId);
+        $urlVideo     = $this->generarUrl($rutaVideo);
         $urlMiniatura = $this->generarMiniatura($videoFile, $canalId);
 
         $duracion = $this->obtenerDuracionDeVideo($videoFile);
@@ -156,10 +155,10 @@ class VideoController extends Controller
 
     private function generarMiniatura($videoFile, $canalId)
     {
-        $videoPath = $videoFile->getRealPath();
-        $miniaturaNombre = uniqid() . '.jpg';
+        $videoPath          = $videoFile->getRealPath();
+        $miniaturaNombre    = uniqid() . '.jpg';
         $miniaturaLocalRuta = '/tmp/' . $miniaturaNombre;
-        $miniaturaS3Ruta = 'miniaturas/' . $canalId . '/' . $miniaturaNombre;
+        $miniaturaS3Ruta    = 'miniaturas/' . $canalId . '/' . $miniaturaNombre;
 
         $this->extraerFrameAleatorio($videoPath, $miniaturaLocalRuta);
         $this->subirArchivoAS3($miniaturaLocalRuta, $miniaturaS3Ruta);
@@ -170,8 +169,8 @@ class VideoController extends Controller
 
     private function obtenerDuracionDeVideo($videoFile)
     {
-        $ffmpeg = FFMpegHelper::crearFFMpeg();
-        $video = $ffmpeg->open($videoFile->getRealPath());
+        $ffmpeg                = FFMpegHelper::crearFFMpeg();
+        $video                 = $ffmpeg->open($videoFile->getRealPath());
         $duracionTotalDelVideo = $video->getStreams()->videos()->first()->get('duration');
 
         return $duracionTotalDelVideo;
@@ -179,11 +178,11 @@ class VideoController extends Controller
 
     private function extraerFrameAleatorio($videoPath, $miniaturaLocalRuta)
     {
-        $ffmpeg = FFMpegHelper::crearFFMpeg();
-        $video = $ffmpeg->open($videoPath);
-        $duracionTotal = $video->getStreams()->videos()->first()->get('duration');
+        $ffmpeg          = FFMpegHelper::crearFFMpeg();
+        $video           = $ffmpeg->open($videoPath);
+        $duracionTotal   = $video->getStreams()->videos()->first()->get('duration');
         $tiempoAleatorio = rand(0, $duracionTotal);
-        $frame = $video->frame(TimeCode::fromSeconds($tiempoAleatorio));
+        $frame           = $video->frame(TimeCode::fromSeconds($tiempoAleatorio));
         $frame->save($miniaturaLocalRuta);
     }
 
@@ -200,12 +199,12 @@ class VideoController extends Controller
     private function crearNuevoVideo($request, $canal, $videoData)
     {
         $video = new Video([
-            'titulo' => $request->titulo,
+            'titulo'      => $request->titulo,
             'descripcion' => $request->descripcion,
-            'link' => $videoData['urlVideo'],
-            'miniatura' => $videoData['urlMiniatura'],
-            'duracion' => $videoData['duracion'],
-            'canal_id' => $canal->id,
+            'link'        => $videoData['urlVideo'],
+            'miniatura'   => $videoData['urlMiniatura'],
+            'duracion'    => $videoData['duracion'],
+            'canal_id'    => $canal->id,
         ]);
 
         $video->save();
@@ -237,10 +236,10 @@ class VideoController extends Controller
         }
 
         $rutaArchivo = $nuevoArchivo->store($folderPath, 's3');
-        $urlArchivo = $this->generarUrl($rutaArchivo);
+        $urlArchivo  = $this->generarUrl($rutaArchivo);
 
         if ($tipo === 'video') {
-            $video->link = $urlArchivo;
+            $video->link      = $urlArchivo;
             $video->miniatura = $this->generarMiniatura($nuevoArchivo, $video->canal_id);
 
             if ($oldMiniaturaPath) {
@@ -377,6 +376,8 @@ class VideoController extends Controller
         return response()->json($videos, 200);
     }
 
+  
+
     private function obtenerVideosPersonalizados($userId)
     {
         $categoriasMasVisitadas = Etiqueta::select('etiquetas.id', 'etiquetas.nombre')
@@ -470,21 +471,74 @@ class VideoController extends Controller
         return $videos;
     }
 
+    public function listarVideosRelacionados($videoId)
+    {
+        $videos = $this->obtenerVideosRelacionados($videoId);
+        return response()->json($videos, 200);
+    }
+
+    private function obtenerVideosRelacionados($videoId)
+    {
+        $etiquetasDelVideo = Etiqueta::select('etiquetas.id')
+            ->join('etiqueta_video', 'etiquetas.id', '=', 'etiqueta_video.etiqueta_id')
+            ->where('etiqueta_video.video_id', $videoId)
+            ->pluck('etiquetas.id');
+
+        $videos = Video::with([
+            'canal:id,nombre,descripcion,user_id',
+            'canal.user:id,name,foto,email',
+            'etiquetas:id,nombre',
+        ])
+            ->withCount([
+                'puntuaciones as puntuacion_1' => function ($query) {
+                    $query->where('valora', 1);
+                },
+                'puntuaciones as puntuacion_2' => function ($query) {
+                    $query->where('valora', 2);
+                },
+                'puntuaciones as puntuacion_3' => function ($query) {
+                    $query->where('valora', 3);
+                },
+                'puntuaciones as puntuacion_4' => function ($query) {
+                    $query->where('valora', 4);
+                },
+                'puntuaciones as puntuacion_5' => function ($query) {
+                    $query->where('valora', 5);
+                },
+            ])
+            ->withCount('visitas')
+            ->where('bloqueado', false)
+            ->where('acceso', 'publico')
+            ->where('id', '!=', $videoId)
+            ->whereHas('etiquetas', function ($query) use ($etiquetasDelVideo) {
+                $query->whereIn('etiquetas.id', $etiquetasDelVideo);
+            })
+            ->orderBy('visitas_count', 'desc')
+            ->take(8)
+            ->get();
+
+        $videos->each(function ($video) {
+            $video->promedio_puntuaciones = $video->puntuacion_promedio;
+        });
+
+        return $videos;
+    }
+
     public function mostrarPublicidad()
     {
         $publicidadSeleccionada = $this->seleccionarPublicidad();
 
-        if (!$publicidadSeleccionada) {
+        if (! $publicidadSeleccionada) {
             return response()->json([
                 'error' => 'No hay publicidades disponibles.',
-                'code' => 404,
+                'code'  => 404,
             ], 404);
         }
         $videoRelacionado = $publicidadSeleccionada->video()->orderBy('pivot_vistos', 'asc')->first();
-        if (!$videoRelacionado) {
+        if (! $videoRelacionado) {
             return response()->json([
                 'error' => 'No hay videos asociados a esta publicidad.',
-                'code' => 404,
+                'code'  => 404,
             ], 404);
         }
         $videoRelacionado->pivot->increment('vistos');
