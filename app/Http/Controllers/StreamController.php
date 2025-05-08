@@ -78,7 +78,7 @@ class StreamController extends Controller
         ], 201);
     }
 
-    public function ListarServerYStreamKey(Request $request, $canalId)
+    public function ListarTransmisionOBS(Request $request, $canalId)
     {
         $user_id = $request->input('user_id');
 
@@ -98,35 +98,6 @@ class StreamController extends Controller
         ];
 
         return response()->json($response, 200, [], JSON_UNESCAPED_SLASHES);
-    }
-
-
-    public function ListarTransmisionOBS(Request $request, $canalId, $transmisionId)
-    {
-        $user_id = $request->input('user_id');
-    
-        if (! $user_id) {
-            return response()->json(['message' => 'El user_id es requerido.'], 400);
-        }
-    
-        $canal = Canal::where('id', (int) $canalId)->firstOrFail();
-    
-        if ($canal->user_id !== (int) $user_id) {
-            return response()->json(['message' => 'No tienes permiso para acceder a este canal.'], 403);
-        }
-    
-        $transmision = Stream::where('id', $transmisionId)
-            ->where('canal_id', $canalId)
-            ->firstOrFail();
-    
-            $url_hls = $transmision->activo
-            ? env('STREAM_BASE_LINK') . "{$transmision->canal->stream_key}.m3u8"
-            : null;
-            
-        return response()->json([
-            'transmision' => $transmision,
-            'url_hls' => $url_hls
-        ], 200, [], JSON_UNESCAPED_SLASHES);
     }
 
     public function actualizarDatosDeTransmision(Request $request, $transmisionId, $canal_id)
