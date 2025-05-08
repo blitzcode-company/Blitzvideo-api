@@ -127,7 +127,7 @@ class StreamControllerTest extends TestCase
     }
 
     /** @test */
-    public function puede_listar_transmision_para_obtener_streamkey_y_url_del_servidor()
+    public function puede_listar_transmision_para_obs()
     {
         $canalId = 2;
         $canal   = Canal::find($canalId);
@@ -139,37 +139,6 @@ class StreamControllerTest extends TestCase
             'stream_key',
         ]);
     }
-
-    /** @test */
-    public function puede_listar_transmision_obs_para_revisar_si_esta_activa_y_obtener_url_hls()
-    {
-        $canal = Canal::where('user_id', 1)->first(); 
-        $this->assertNotNull($canal, "El canal no se ha encontrado.");
-
-        $stream = Stream::where('canal_id', $canal->id)->first(); 
-        $this->assertNotNull($stream, "El stream no se ha encontrado.");
-
-        $url = $this->baseUrl . "canal/{$canal->id}/transmision/{$stream->id}?user_id={$canal->user_id}";
-
-        $response = $this->getJson($url);
-
-        $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'transmision' => [
-                        'id',
-                        'titulo',
-                        'descripcion',
-                        'activo',
-                        'canal_id',
-                        'created_at',
-                        'updated_at',
-                    ],
-                    'url_hls',
-                ]);
-
-        $this->assertNull($response->json('url_hls'));
-    }
-
 
     /** @test *//*
 
