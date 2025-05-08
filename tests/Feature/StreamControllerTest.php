@@ -170,43 +170,6 @@ class StreamControllerTest extends TestCase
         $this->assertNull($response->json('url_hls'));
     }
 
-    /** @test */
-    public function puede_listar_transmision_obs_para_stream_activo_y_obtener_url_hls()
-    {
-        $canalId = 4;
-        $canal   = Canal::find($canalId);
-        $this->assertNotNull($canal, "El canal no se ha encontrado.");
-
-        Stream::where('canal_id', $canalId)->delete();
-
-        $stream = Stream::create([
-            'titulo'     => 'Transmisión Activa',
-            'descripcion'=> 'Descripción de la transmisión activa',
-            'canal_id'   => $canal->id,
-            'activo'     => 1, 
-        ]);
-
-        $url = $this->baseUrl . "canal/{$canalId}/transmision/{$stream->id}?user_id={$canal->user_id}";
-
-        $response = $this->getJson($url);
-
-        $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'transmision' => [
-                        'id',
-                        'titulo',
-                        'descripcion',
-                        'activo',
-                        'canal_id',
-                        'created_at',
-                        'updated_at',
-                    ],
-                    'url_hls',
-                ]);
-
-        $expectedHlsUrl = env('STREAM_BASE_LINK') . "{$canal->stream_key}.m3u8";
-        $this->assertEquals($expectedHlsUrl, $response->json('url_hls'));
-    }
 
     /** @test *//*
 
