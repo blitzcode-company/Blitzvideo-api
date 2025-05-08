@@ -38,8 +38,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
         Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
         Route::get('/tendencia/semana', [VideoController::class, 'listarTendencias']);
+        Route::get('/{idVideo}/relacionados', [VideoController::class, 'listarVideosRelacionados']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
         Route::get('/comentarios/{idComentario}/contar-me-gusta', [MeGustaController::class, 'ContadorDeMeGustasPorComentario']);
+        
 
     });
     Route::prefix('canal')->group(function () {
@@ -68,7 +70,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
         Route::post('/iniciar', [StreamController::class, 'IniciarStream']);
         Route::post('/finalizar', [StreamController::class, 'FinalizarStream']);
-        Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
     });
     Route::prefix('publicidad')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarPublicidad']);
@@ -145,14 +146,15 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     });
 
     Route::prefix('streams')->group(function () {
-        Route::get('/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
+
+        Route::get('/canal/{canalId}', [StreamController::class, 'ListarServerYStreamKey']);
+        Route::get('/canal/{canalId}/transmision/{transmisionId}', [StreamController::class, 'ListarTransmisionOBS']);
 
         Route::post('/canal/{canalId}', [StreamController::class, 'guardarNuevaTransmision']);
         Route::post('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
         Route::delete('/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
         Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
-     
     });
 
 });

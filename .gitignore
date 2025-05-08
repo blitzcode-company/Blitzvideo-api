@@ -16,3 +16,4 @@ yarn-error.log
 /minio-data
 /mysql
 /streams/records/*
+/scripts/upload_to_minio.sh
