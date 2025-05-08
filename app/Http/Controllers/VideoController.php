@@ -514,6 +514,10 @@ class VideoController extends Controller
                 $query->whereIn('etiquetas.id', $etiquetasDelVideo);
             })
             ->orderBy('visitas_count', 'desc')
+<<<<<<< HEAD
+=======
+            ->take(8)
+>>>>>>> d34b5dde9715aed7e6231b2b2bc7b1f98938a078
             ->get();
 
         $videos->each(function ($video) {

@@ -146,10 +146,14 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     });
 
     Route::prefix('streams')->group(function () {
+<<<<<<< HEAD
 
         Route::get('/canal/{canalId}', [StreamController::class, 'ListarServerYStreamKey']);
         Route::get('/canal/{canalId}/transmision/{transmisionId}', [StreamController::class, 'ListarTransmisionOBS']);
 
+=======
+        Route::get('/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
+>>>>>>> d34b5dde9715aed7e6231b2b2bc7b1f98938a078
         Route::post('/canal/{canalId}', [StreamController::class, 'guardarNuevaTransmision']);
         Route::post('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
         Route::delete('/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
