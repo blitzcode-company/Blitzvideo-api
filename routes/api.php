@@ -41,8 +41,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idVideo}/relacionados', [VideoController::class, 'listarVideosRelacionados']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
         Route::get('/comentarios/{idComentario}/contar-me-gusta', [MeGustaController::class, 'ContadorDeMeGustasPorComentario']);
-        
-
+        Route::get('/{idVideo}/puntuaciones', [PuntuaController::class, 'listarPuntuaciones']);
+        Route::get('/usuario/{userId}/puntuaciones', [PuntuaController::class, 'listarPuntuacionesPorUsuario']);
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
@@ -50,7 +50,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/suscripciones', [SuscribeController::class, 'ListarSuscripciones']);
         Route::get('/usuario/{userId}/suscripciones', [SuscribeController::class, 'ListarSuscripcionesUsuario']);
         Route::get('/{canal_id}/suscripciones/count', [SuscribeController::class, 'ContarSuscripciones']);
-
     });
     Route::prefix('etiquetas')->group(function () {
         Route::get('/', [EtiquetaController::class, 'listarEtiquetas']);

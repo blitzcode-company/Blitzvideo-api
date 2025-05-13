@@ -1,11 +1,10 @@
 <?php
-
 namespace Tests\Unit;
 
 use App\Models\Playlist;
 use App\Models\Puntua;
-use App\Models\Video;
 use App\Models\User;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Illuminate\Http\Response;
 use Tests\TestCase;
@@ -19,15 +18,15 @@ class PlaylistControllerTest extends TestCase
         $user = User::first();
 
         $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . 'playlists', [
-            'nombre' => 'Nueva Playlist',
-            'acceso' => true,
+            'nombre'  => 'Nueva Playlist',
+            'acceso'  => true,
             'user_id' => $user->id,
         ]);
 
         $response->assertStatus(Response::HTTP_CREATED);
         $response->assertJson(['message' => 'Playlist creada exitosamente.']);
         $this->assertDatabaseHas('playlists', [
-            'nombre' => 'Nueva Playlist',
+            'nombre'  => 'Nueva Playlist',
             'user_id' => $user->id,
         ]);
     }
@@ -35,8 +34,8 @@ class PlaylistControllerTest extends TestCase
     public function testPuedeAgregarVariosVideosAPlaylist()
     {
         $playlist = Playlist::create([
-            'nombre' => 'Playlist de Prueba',
-            'acceso' => true,
+            'nombre'  => 'Playlist de Prueba',
+            'acceso'  => true,
             'user_id' => User::first()->id,
         ]);
 
@@ -51,7 +50,7 @@ class PlaylistControllerTest extends TestCase
         foreach ($videos as $videoId) {
             $this->assertDatabaseHas('video_lista', [
                 'playlist_id' => $playlist->id,
-                'video_id' => $videoId,
+                'video_id'    => $videoId,
             ]);
         }
     }
@@ -59,8 +58,8 @@ class PlaylistControllerTest extends TestCase
     public function testNoSePuedeAgregarVideosYaExistentesEnPlaylist()
     {
         $playlist = Playlist::create([
-            'nombre' => 'Playlist Existente',
-            'acceso' => true,
+            'nombre'  => 'Playlist Existente',
+            'acceso'  => true,
             'user_id' => User::first()->id,
         ]);
 
@@ -78,8 +77,8 @@ class PlaylistControllerTest extends TestCase
     public function testPuedeQuitarVideoDePlaylist()
     {
         $playlist = Playlist::create([
-            'nombre' => 'Playlist de Eliminación',
-            'acceso' => true,
+            'nombre'  => 'Playlist de Eliminación',
+            'acceso'  => true,
             'user_id' => User::first()->id,
         ]);
 
@@ -94,52 +93,49 @@ class PlaylistControllerTest extends TestCase
         $response->assertJson(['message' => 'Video quitado de la playlist exitosamente.']);
         $this->assertDatabaseMissing('video_lista', [
             'playlist_id' => $playlist->id,
-            'video_id' => $video->id,
+            'video_id'    => $video->id,
         ]);
     }
     public function testPuedeObtenerPlaylistConVideos()
     {
         $user = User::first();
-    
+
         $playlist = Playlist::create([
-            'nombre' => 'Playlist para Prueba',
-            'acceso' => true,
+            'nombre'  => 'Playlist para Prueba',
+            'acceso'  => true,
             'user_id' => $user->id,
         ]);
-        $videos = Video::take(3)->get(); 
-        $playlist->videos()->attach($videos->pluck('id')); 
+        $videos = Video::take(3)->get();
+        $playlist->videos()->attach($videos->pluck('id'));
 
         $response = $this->getJson("/api/v1/playlists/{$playlist->id}/videos");
-    
+
         $response->assertStatus(Response::HTTP_OK);
-    
+
         $response->assertJson([
             'playlist' => [
-                'id' => $playlist->id,
-                'nombre' => $playlist->nombre,
-                'acceso' => $playlist->acceso,
+                'id'      => $playlist->id,
+                'nombre'  => $playlist->nombre,
+                'acceso'  => $playlist->acceso,
                 'user_id' => $playlist->user_id,
             ],
-            'videos' => $videos->map(function ($video) {
+            'videos'   => $videos->map(function ($video) {
                 return [
-                    'id' => $video->id,
-                    'titulo' => $video->titulo,
+                    'id'          => $video->id,
+                    'titulo'      => $video->titulo,
                     'descripcion' => $video->descripcion,
-                    'miniatura' => $video->miniatura,
-                    'link' => $video->link,
+                    'miniatura'   => $video->miniatura,
+                    'link'        => $video->link,
                 ];
             })->toArray(),
         ]);
     }
-    
-
-
 
     public function testPuedeBorrarPlaylist()
     {
         $playlist = Playlist::create([
-            'nombre' => 'Playlist de Prueba para Borrar',
-            'acceso' => true,
+            'nombre'  => 'Playlist de Prueba para Borrar',
+            'acceso'  => true,
             'user_id' => User::first()->id,
         ]);
 
@@ -148,86 +144,86 @@ class PlaylistControllerTest extends TestCase
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Playlist borrada exitosamente.']);
         $this->assertDatabaseHas('playlists', [
-            'id' => $playlist->id,
+            'id'         => $playlist->id,
             'deleted_at' => now()->format('Y-m-d H:i:s'),
         ]);
     }
 
     public function testPuedeModificarPlaylist()
     {
-    $playlist = Playlist::create([
-        'nombre' => 'Nombre Original',
-        'acceso' => true,
-        'user_id' => User::first()->id,
-    ]);
+        $playlist = Playlist::create([
+            'nombre'  => 'Nombre Original',
+            'acceso'  => true,
+            'user_id' => User::first()->id,
+        ]);
 
-    $datosModificados = [
-        'nombre' => 'Nombre de playlist modificado',  
-        'acceso' => false,
-    ];
+        $datosModificados = [
+            'nombre' => 'Nombre de playlist modificado',
+            'acceso' => false,
+        ];
 
-    $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "playlists/{$playlist->id}", $datosModificados);
+        $response = $this->putJson(env('BLITZVIDEO_BASE_URL') . "playlists/{$playlist->id}", $datosModificados);
 
-    $response->assertStatus(Response::HTTP_OK);
-    $response->assertJson(['message' => 'Playlist modificada exitosamente.']);
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson(['message' => 'Playlist modificada exitosamente.']);
 
-    $this->assertDatabaseHas('playlists', [
-        'id' => $playlist->id,
-        'nombre' => 'Nombre de playlist modificado', 
-        'acceso' => false, 
-    ]);
+        $this->assertDatabaseHas('playlists', [
+            'id'     => $playlist->id,
+            'nombre' => 'Nombre de playlist modificado',
+            'acceso' => false,
+        ]);
     }
 
     public function testPuedeAgregarVideoAFavoritos()
     {
         $usuario = User::first();
-        $video = Video::first();
-    
+        $video   = Video::first();
+
         Puntua::create([
-            'user_id' => $usuario->id,
+            'user_id'  => $usuario->id,
             'video_id' => $video->id,
-            'valora' => 4,
+            'valora'   => 4,
         ]);
-        
+
         $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
             'user_id' => $usuario->id,
-            'valora' => 5,
+            'valora'  => 5,
         ]);
-    
+
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
-    
+
         $this->assertDatabaseHas('video_lista', [
             'playlist_id' => Playlist::where('nombre', 'Favoritos')->where('user_id', $usuario->id)->first()->id,
-            'video_id' => $video->id,
+            'video_id'    => $video->id,
         ]);
     }
 
     public function testPuedeEliminarVideoDeFavoritos()
-{
-    $usuario = User::first();
-    $video = Video::first();
+    {
+        $usuario = User::first();
+        $video   = Video::first();
 
-    Puntua::create([
-        'user_id' => $usuario->id,
-        'video_id' => $video->id,
-        'valora' => 5,
-    ]);
+        Puntua::create([
+            'user_id'  => $usuario->id,
+            'video_id' => $video->id,
+            'valora'   => 5,
+        ]);
 
-    $playlist = Playlist::where('nombre', 'Favoritos')->where('user_id', $usuario->id)->first();
-    $playlist->videos()->attach($video->id);
+        $playlist = Playlist::where('nombre', 'Favoritos')->where('user_id', $usuario->id)->first();
+        $playlist->videos()->attach($video->id);
 
-    $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
-        'user_id' => $usuario->id,
-        'valora' => 5,
-    ]);
+        $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
+            'user_id' => $usuario->id,
+            'valora'  => 5,
+        ]);
 
-    $response->assertStatus(Response::HTTP_OK);
-    $response->assertJson(['message' => 'Video eliminado de la playlist "Favoritos".']);
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson(['message' => 'Video eliminado de la playlist "Favoritos".']);
 
-    $this->assertDatabaseMissing('video_lista', [
-        'playlist_id' => $playlist->id,
-        'video_id' => $video->id,
-    ]);
-}
+        $this->assertDatabaseMissing('video_lista', [
+            'playlist_id' => $playlist->id,
+            'video_id'    => $video->id,
+        ]);
+    }
 }
