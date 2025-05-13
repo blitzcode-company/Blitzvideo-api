@@ -73,6 +73,23 @@ Route::prefix('v1')->group(function () {
     Route::prefix('publicidad')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarPublicidad']);
     });
+    Route::prefix('reporte')->group(function () {
+        Route::prefix('comentario')->group(function () {
+            Route::get('/', [ReportaComentarioController::class, 'listarReportes']);
+            Route::get('/{comentarioId}', [ReportaComentarioController::class, 'listarReportesPorComentario']);
+            Route::get('/usuario/{userId}', [ReportaComentarioController::class, 'listarReportesPorUsuario']);
+        });
+        Route::prefix('video')->group(function () {
+            Route::get('/', [ReportaController::class, 'listarReportes']);
+            Route::get('/{videoId}', [ReportaController::class, 'listarReportesPorVideo']);
+            Route::get('/usuario/{userId}', [ReportaController::class, 'listarReportesPorUsuario']);
+        });
+        Route::prefix('usuario')->group(function () {
+            Route::get('/', [ReportaUsuarioController::class, 'listarReportes']);
+            Route::get('/{userId}', [ReportaUsuarioController::class, 'listarReportesPorUsuario']);
+            Route::get('/reportante/{userId}', [ReportaUsuarioController::class, 'listarReportesPorReportante']);
+        });
+    });
 });
 
 Route::prefix('v1')->middleware('auth.api')->group(function () {
@@ -123,7 +140,6 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
 
         Route::put('/{canalId}/usuario/{userId}/notificacion', [CanalController::class, 'cambiarEstadoNotificaciones']);
         Route::get('/{canalId}/usuario/{userId}/notificacion', [CanalController::class, 'estadoNotificaciones']);
-        
 
     });
     Route::prefix('etiquetas')->group(function () {
