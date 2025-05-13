@@ -1,22 +1,39 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Canal;
 use App\Models\Suscribe;
-use App\Models\User;
 use App\Models\Video;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class CanalController extends Controller
 {
     public function listarCanales()
     {
         $canales = Canal::with('user')->get();
+        $host    = $this->obtenerHostMinio();
+        $bucket  = $this->obtenerBucket();
+        $canales->each(function ($canal) use ($host, $bucket) {
+            $canal->portada = $this->obtenerUrlPortada($canal->portada, $host, $bucket);
+        });
         return response()->json($canales, 200);
+    }
+
+    private function obtenerHostMinio()
+    {
+        return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+    }
+
+    private function obtenerBucket()
+    {
+        return env('AWS_BUCKET') . '/';
+    }
+
+    private function obtenerUrlPortada($portada, $host, $bucket)
+    {
+        return $portada ? $host . $bucket . $portada : null;
     }
 
     public function listarVideosDeCanal($canalId)
@@ -55,22 +72,40 @@ class CanalController extends Controller
 
     public function crearCanal(Request $request, $userId)
     {
-        $usuario = User::findOrFail($userId);
         $canalExistente = Canal::where('user_id', $userId)->first();
         if ($canalExistente) {
             return response()->json(['message' => 'El usuario ya tiene un canal'], 500);
         }
         $datosValidados = $this->validarDatos($request);
-        $canal = $this->crearNuevoCanal($datosValidados, $userId);
+        $canal          = $this->crearNuevoCanal($datosValidados, $userId);
         $this->guardarPortada($request, $canal);
         $this->guardarCanal($canal);
         return response()->json(['message' => 'Canal creado correctamente'], 201);
     }
 
+    private function validarDatos(Request $request)
+    {
+        return $request->validate([
+            'nombre'      => 'required|string|max:255',
+            'descripcion' => 'nullable|string',
+            'portada'     => 'nullable|image|mimes:jpeg,png,jpg,gif,avif|max:2048',
+        ]);
+    }
+
+    private function crearNuevoCanal(array $datosValidados, $userId)
+    {
+        return new Canal([
+            'nombre'      => $datosValidados['nombre'],
+            'descripcion' => $datosValidados['descripcion'],
+            'user_id'     => $userId,
+            'stream_key'  => bin2hex(random_bytes(16)),
+        ]);
+    }
+
     public function darDeBajaCanal($canalId)
     {
         try {
-            $canal = Canal::findOrFail($canalId);
+            $canal  = Canal::findOrFail($canalId);
             $videos = Video::where('canal_id', $canalId)->get();
             foreach ($videos as $video) {
                 $video->delete();
@@ -87,30 +122,11 @@ class CanalController extends Controller
 
     public function editarCanal(Request $request, $canalId)
     {
-
         try {
             $datosValidados = $this->validarDatosDeEdicionDeCanal($request);
+            $canal          = Canal::findOrFail($canalId);
 
-            $canal = Canal::findOrFail($canalId);
-
-            if ($request->has('nombre')) {
-                $canal->nombre = $request->input('nombre');
-            }
-
-            if ($request->has('descripcion')) {
-                $canal->descripcion = $request->input('descripcion');
-            }
-
-            if ($request->hasFile('portada')) {
-                $foto = $request->file('portada');
-                $userId = $canal->user_id;
-                $folderPath = 'portada/' . $userId;
-                $rutaFoto = $foto->store($folderPath, 's3');
-                $urlFoto = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaFoto));
-
-                $canal->portada = $urlFoto;
-            }
-
+            $this->actualizarDatosCanal($canal, $datosValidados);
             $canal->save();
 
             return response()->json(['message' => 'Canal actualizado correctamente', 'canal' => $canal], 200);
@@ -118,7 +134,41 @@ class CanalController extends Controller
             return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);
         } catch (QueryException $exception) {
             return response()->json(['message' => 'Ocurrió un error al actualizar tu canal, por favor inténtalo de nuevo más tarde'], 500);
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            return response()->json(['message' => 'Error de validación', 'errors' => $exception->errors()], 422);
         }
+    }
+
+    private function validarDatosDeEdicionDeCanal(Request $request)
+    {
+        return $request->validate([
+            'nombre'      => 'sometimes|required|string|max:255',
+            'descripcion' => 'sometimes|nullable|string',
+            'portada'     => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif,avif|max:2048',
+        ]);
+    }
+
+    private function actualizarDatosCanal(Canal $canal, array $datosValidados)
+    {
+        if (isset($datosValidados['nombre'])) {
+            $canal->nombre = $datosValidados['nombre'];
+        }
+
+        if (isset($datosValidados['descripcion'])) {
+            $canal->descripcion = $datosValidados['descripcion'];
+        }
+
+        if (isset($datosValidados['portada'])) {
+            $this->actualizarPortadaCanal($canal, $datosValidados['portada']);
+        }
+    }
+
+    private function actualizarPortadaCanal(Canal $canal, $portada)
+    {
+        $userId         = $canal->user_id;
+        $folderPath     = 'portada/' . $userId;
+        $rutaFoto       = $portada->store($folderPath, 's3');
+        $canal->portada = $rutaFoto;
     }
 
     private function guardarCanal(Canal $canal)
@@ -126,83 +176,57 @@ class CanalController extends Controller
         return $canal->save();
     }
 
-    private function validarDatos(Request $request)
-    {
-        return $request->validate([
-            'nombre' => 'required|string|max:255',
-            'descripcion' => 'nullable|string',
-            'portada' => 'nullable|image|mimes:jpeg,png,jpg,gif,avif|max:2048',
-        ]);
-    }
-
-    private function validarDatosDeEdicionDeCanal(Request $request)
-    {
-        return $request->validate([
-            'nombre' => 'sometimes|required|string|max:255',
-            'descripcion' => 'sometimes|nullable|string',
-            'portada' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif,avif|max:2048',
-        ]);
-    }
-    private function crearNuevoCanal(array $datosValidados, $userId)
-    {
-        return new Canal([
-            'nombre' => $datosValidados['nombre'],
-            'descripcion' => $datosValidados['descripcion'],
-            'user_id' => $userId,
-            'stream_key'  => bin2hex(random_bytes(16)),
-        ]);
-    }
-
     private function guardarPortada(Request $request, Canal $canal)
     {
         if ($request->hasFile('portada')) {
-            $portada = $request->file('portada');
-            $userId = $canal->user_id;
-            $folderPath = 'portadas/' . $userId;
-            $rutaPortada = $portada->store($folderPath, 's3');
-            $urlPortada = str_replace('minio', env('BLITZVIDEO_HOST'), Storage::disk('s3')->url($rutaPortada));
-            $canal->portada = $urlPortada;
-
+            $portada        = $request->file('portada');
+            $userId         = $canal->user_id;
+            $folderPath     = 'portadas/' . $userId;
+            $rutaPortada    = $portada->store($folderPath, 's3');
+            $canal->portada = $rutaPortada;
         }
     }
 
-  public function cambiarEstadoNotificaciones(Request $request, $canalId, $userId)
-{
-    $request->validate([
-        'estado' => 'required|boolean',
-    ]);
+    public function cambiarEstadoNotificaciones(Request $request, $canalId, $userId)
+    {
+        $request->validate([
+            'estado' => 'required|boolean',
+        ]);
 
-    $suscripcion = Suscribe::where('canal_id', $canalId)
-        ->where('user_id', $userId)
-        ->first();
+        $suscripcion = $this->obtenerSuscripcion($canalId, $userId);
 
-    if (!$suscripcion) {
-        return response()->json(['message' => 'No estás suscrito a este canal'], 404);
-    }
+        if (! $suscripcion) {
+            return response()->json(['message' => 'No estás suscrito a este canal'], 404);
+        }
 
-    $suscripcion->notificaciones = $request->estado;
-    $suscripcion->save();
+        $suscripcion->notificaciones = $request->estado;
+        $suscripcion->save();
 
-    $mensaje = $request->estado
+        $mensaje = $request->estado
         ? 'Notificaciones activadas para el canal'
         : 'Notificaciones desactivadas para el canal';
 
-    return response()->json(['message' => $mensaje], 200);
-}
-
-public function estadoNotificaciones($canalId, $userId)
-{
-    $suscripcion = Suscribe::where('canal_id', $canalId)
-        ->where('user_id', $userId)
-        ->first();
-
-    if (!$suscripcion) {
-        return response()->json(['message' => 'No estás suscrito a este canal'], 404);
+        return response()->json(['message' => $mensaje], 200);
     }
 
-    return response()->json([
-        'notificaciones' => (bool) $suscripcion->notificaciones
-    ], 200);
-}
-    
+    public function estadoNotificaciones($canalId, $userId)
+    {
+        $suscripcion = $this->obtenerSuscripcion($canalId, $userId);
+
+        if (! $suscripcion) {
+            return response()->json(['message' => 'No estás suscrito a este canal'], 404);
+        }
+
+        return response()->json([
+            'notificaciones' => (bool) $suscripcion->notificaciones,
+        ], 200);
+    }
+
+    private function obtenerSuscripcion($canalId, $userId)
+    {
+        return Suscribe::where('canal_id', $canalId)
+            ->where('user_id', $userId)
+            ->first();
+    }
+
 }
