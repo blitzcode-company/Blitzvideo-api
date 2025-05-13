@@ -71,7 +71,7 @@ class ComentarioControllerTest extends TestCase
         ]);
 
         $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['message' => 'Comentario actualizado correctamente']);
+        $response->assertJson(['message' => 'Comentario actualizado correctamente.']);
         $this->assertDatabaseHas('comentarios', ['id' => $comentario->id, 'mensaje' => 'Mensaje editado']);
     }
 
@@ -110,7 +110,7 @@ class ComentarioControllerTest extends TestCase
         ]);
 
         $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['message' => 'Comentario dado de baja correctamente']);
+        $response->assertJson(['message' => 'Comentario dado de baja correctamente.']);
         $this->assertSoftDeleted('comentarios', ['id' => $comentario->id]);
     }
 

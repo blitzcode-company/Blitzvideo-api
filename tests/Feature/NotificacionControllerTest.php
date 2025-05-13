@@ -99,7 +99,7 @@ class NotificacionControllerTest extends TestCase
             'usuario_id' => $usuario->id,
             'notificacion_id' => $notificacion->id,
         ]);
-        $response->assertStatus(200);
+        $response->assertStatus(201);
         $response->assertJson([
             'message' => 'Notificación marcada como leída',
             'notificacion' => $notificacion->toArray(),

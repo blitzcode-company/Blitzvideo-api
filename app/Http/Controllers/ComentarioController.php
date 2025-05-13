@@ -69,7 +69,7 @@ class ComentarioController extends Controller
         }
         $comentario->mensaje = $request->mensaje;
         $comentario->save();
-        return response()->json(['message' => 'Comentario actualizado correctamente'], 200);
+        return response()->json(['message' => 'Comentario actualizado correctamente.'], 200);
     }
 
     private function validarComentario(Request $request)

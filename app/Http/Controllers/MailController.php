@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Jobs\EnviarCorreoJob;
@@ -9,17 +8,16 @@ class MailController extends Controller
     public function enviarCorreo($destinatario, $asunto, $mensaje)
     {
         $data = [
-            'asunto' => $asunto,
+            'asunto'  => $asunto,
             'mensaje' => $mensaje,
         ];
 
-        EnviarCorreoJob::dispatch($destinatario, $asunto, $data, 'emails.plantilla')
-            ->onQueue('cola_correo');
+        $this->dispatchCorreo($destinatario, $asunto, $data, 'emails.plantilla');
 
         return response()->json(['message' => 'Correo enviado exitosamente.']);
     }
 
-    public function enviarCorreoPassword($destinatario, $asunto, $link, $name)
+    public function enviarCorreoPassword($destinatario, $asunto, $link, $name = 'Usuario')
     {
         $mensaje = '
         Está recibiendo este correo electrónico porque recibimos una solicitud de restablecimiento de contraseña para su cuenta.
@@ -30,16 +28,20 @@ class MailController extends Controller
         ';
 
         $data = [
-            'asunto' => $asunto,
+            'asunto'  => $asunto,
             'mensaje' => $mensaje,
-            'link' => $link,
-            'name' => $name ?? 'Usuario',
+            'link'    => $link,
+            'name'    => $name,
         ];
 
-        EnviarCorreoJob::dispatch($destinatario, $asunto, $data, 'emails.password')
-            ->onQueue('cola_correo');
+        $this->dispatchCorreo($destinatario, $asunto, $data, 'emails.password');
 
         return response()->json(['message' => 'Correo con botón enviado exitosamente.']);
     }
 
+    private function dispatchCorreo($destinatario, $asunto, $data, $template)
+    {
+        EnviarCorreoJob::dispatch($destinatario, $asunto, $data, $template)
+            ->onQueue('cola_correo');
+    }
 }
