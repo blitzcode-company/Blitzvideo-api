@@ -16,7 +16,7 @@ class CanalController extends Controller
         $host    = $this->obtenerHostMinio();
         $bucket  = $this->obtenerBucket();
         $canales->each(function ($canal) use ($host, $bucket) {
-            $canal->portada = $this->obtenerUrlPortada($canal->portada, $host, $bucket);
+            $canal->portada = $this->obtenerUrlArchivo($canal->portada, $host, $bucket);
         });
         return response()->json($canales, 200);
     }
@@ -31,43 +31,57 @@ class CanalController extends Controller
         return env('AWS_BUCKET') . '/';
     }
 
-    private function obtenerUrlPortada($portada, $host, $bucket)
+    private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
     {
-        return $portada ? $host . $bucket . $portada : null;
+        return $rutaRelativa ? $host . $bucket . $rutaRelativa : null;
     }
 
     public function listarVideosDeCanal($canalId)
     {
-        $videos = Video::where('canal_id', $canalId)
+        $videos = $this->obtenerVideosConRelaciones($canalId);
+        $host   = $this->obtenerHostMinio();
+        $bucket = $this->obtenerBucket();
+        $videos->each(function ($video) use ($host, $bucket) {
+            $this->procesarVideo($video, $host, $bucket);
+        });
+        return response()->json($videos, 200);
+    }
+
+    private function obtenerVideosConRelaciones($canalId)
+    {
+        return Video::where('canal_id', $canalId)
             ->with([
                 'canal:id,nombre,portada,descripcion,user_id',
                 'canal.user:id,name,foto,email',
                 'etiquetas:id,nombre',
             ])
-            ->withCount([
-                'puntuaciones as puntuacion_1' => function ($query) {
-                    $query->where('valora', 1);
-                },
-                'puntuaciones as puntuacion_2' => function ($query) {
-                    $query->where('valora', 2);
-                },
-                'puntuaciones as puntuacion_3' => function ($query) {
-                    $query->where('valora', 3);
-                },
-                'puntuaciones as puntuacion_4' => function ($query) {
-                    $query->where('valora', 4);
-                },
-                'puntuaciones as puntuacion_5' => function ($query) {
-                    $query->where('valora', 5);
-                },
-                'visitas',
-            ])->get();
+            ->withCount($this->obtenerContadoresDePuntuaciones())
+            ->get();
+    }
 
-        $videos->each(function ($video) {
-            $video->promedio_puntuaciones = $video->puntuacion_promedio;
-        });
+    private function obtenerContadoresDePuntuaciones()
+    {
+        return [
+            'puntuaciones as puntuacion_1' => fn($query) => $query->where('valora', 1),
+            'puntuaciones as puntuacion_2' => fn($query) => $query->where('valora', 2),
+            'puntuaciones as puntuacion_3' => fn($query) => $query->where('valora', 3),
+            'puntuaciones as puntuacion_4' => fn($query) => $query->where('valora', 4),
+            'puntuaciones as puntuacion_5' => fn($query) => $query->where('valora', 5),
+            'visitas',
+        ];
+    }
 
-        return response()->json($videos, 200);
+    private function procesarVideo($video, $host, $bucket)
+    {
+        $video->miniatura = $this->obtenerUrlArchivo($video->miniatura, $host, $bucket);
+        $video->link      = $this->obtenerUrlArchivo($video->link, $host, $bucket);
+        if ($video->canal) {
+            $video->canal->portada = $this->obtenerUrlArchivo($video->canal->portada, $host, $bucket);
+            if ($video->canal->user) {
+                $video->canal->user->foto = $this->obtenerUrlArchivo($video->canal->user->foto, $host, $bucket);
+            }
+        }
+        $video->promedio_puntuaciones = $video->puntuacion_promedio;
     }
 
     public function crearCanal(Request $request, $userId)
