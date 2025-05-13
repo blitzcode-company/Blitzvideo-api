@@ -176,23 +176,14 @@ class PlaylistControllerTest extends TestCase
 
     public function testPuedeAgregarVideoAFavoritos()
     {
-        $usuario = User::first();
-        $video   = Video::first();
-
-        Puntua::create([
-            'user_id'  => $usuario->id,
-            'video_id' => $video->id,
-            'valora'   => 4,
-        ]);
-
+        $usuario  = User::first();
+        $video    = Video::first();
         $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
             'user_id' => $usuario->id,
             'valora'  => 5,
         ]);
-
         $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
-
+        $response->assertJson(['message' => 'Video agregado a la playlist "Favoritos".']);
         $this->assertDatabaseHas('video_lista', [
             'playlist_id' => Playlist::where('nombre', 'Favoritos')->where('user_id', $usuario->id)->first()->id,
             'video_id'    => $video->id,

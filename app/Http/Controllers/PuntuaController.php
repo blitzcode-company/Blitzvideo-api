@@ -7,24 +7,6 @@ use Illuminate\Http\Request;
 
 class PuntuaController extends Controller
 {
-    public function listarPuntuaciones($idVideo)
-    {
-        $puntuaciones = Puntua::where('video_id', $idVideo)->get();
-        if ($puntuaciones->isEmpty()) {
-            return response()->json(['message' => 'No hay puntuaciones para este video.'], 404);
-        }
-        return response()->json($puntuaciones, 200);
-    }
-    
-    public function listarPuntuacionesPorUsuario($userId)
-    {
-        $puntuaciones = Puntua::where('user_id', $userId)->get();
-        if ($puntuaciones->isEmpty()) {
-            return response()->json(['message' => 'No hay puntuaciones para este usuario.'], 404);
-        }
-        return response()->json($puntuaciones, 200);
-    }
-
     public function puntuar(Request $request, $idVideo)
     {
         $userId = $request->input('user_id');
@@ -34,6 +16,28 @@ class PuntuaController extends Controller
             return $this->gestionarFavoritos($userId, $idVideo);
         }
         return response()->json(['message' => 'Puntuación agregada o actualizada exitosamente.'], 200);
+    }
+
+    private function actualizarPuntuacion($userId, $idVideo, $valora)
+    {
+        Puntua::updateOrCreate(
+            ['user_id' => $userId, 'video_id' => $idVideo],
+            ['valora' => $valora]
+        );
+    }
+
+    private function gestionarFavoritos($userId, $idVideo)
+    {
+        $playlistDeFavoritos = Playlist::firstOrCreate(
+            ['nombre' => 'Favoritos', 'user_id' => $userId],
+            ['acceso' => true]
+        );
+        if ($playlistDeFavoritos->videos()->where('video_id', $idVideo)->exists()) {
+            $playlistDeFavoritos->videos()->detach($idVideo);
+            return response()->json(['message' => 'Video eliminado de la playlist "Favoritos".'], 200);
+        }
+        $playlistDeFavoritos->videos()->attach($idVideo);
+        return response()->json(['message' => 'Video agregado a la playlist "Favoritos".'], 200);
     }
 
     public function obtenerPuntuacionActual($idVideo, $userId)
@@ -63,25 +67,21 @@ class PuntuaController extends Controller
         return response()->json(['message' => 'Puntuación eliminada exitosamente.'], 200);
     }
 
-    private function actualizarPuntuacion($userId, $idVideo, $valora)
+    public function listarPuntuaciones($idVideo)
     {
-        Puntua::updateOrCreate(
-            ['user_id' => $userId, 'video_id' => $idVideo],
-            ['valora' => $valora]
-        );
+        $puntuaciones = Puntua::where('video_id', $idVideo)->get();
+        if ($puntuaciones->isEmpty()) {
+            return response()->json(['message' => 'No hay puntuaciones para este video.'], 404);
+        }
+        return response()->json($puntuaciones, 200);
     }
 
-    private function gestionarFavoritos($userId, $idVideo)
+    public function listarPuntuacionesPorUsuario($userId)
     {
-        $playlistDeFavoritos = Playlist::firstOrCreate(
-            ['nombre' => 'Favoritos', 'user_id' => $userId],
-            ['acceso' => true]
-        );
-        if ($playlistDeFavoritos->videos()->where('video_id', $idVideo)->exists()) {
-            $playlistDeFavoritos->videos()->detach($idVideo);
-            return response()->json(['message' => 'Video eliminado de la playlist "Favoritos".'], 200);
+        $puntuaciones = Puntua::where('user_id', $userId)->get();
+        if ($puntuaciones->isEmpty()) {
+            return response()->json(['message' => 'No hay puntuaciones para este usuario.'], 404);
         }
-        $playlistDeFavoritos->videos()->attach($idVideo);
-        return response()->json(['message' => 'Video agregado a la playlist "Favoritos".'], 200);
+        return response()->json($puntuaciones, 200);
     }
 }

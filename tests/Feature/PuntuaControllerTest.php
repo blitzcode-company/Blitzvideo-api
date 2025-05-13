@@ -19,7 +19,7 @@ class PuntuaControllerTest extends TestCase
         $video    = Video::first();
         $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
             'user_id' => $usuario->id,
-            'valora'  => 5,
+            'valora'  => 3,
         ]);
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
@@ -73,18 +73,12 @@ class PuntuaControllerTest extends TestCase
         if ($playlistDeFavoritos) {
             $playlistDeFavoritos->videos()->detach($video->id);
         }
-        Puntua::create([
-            'user_id'  => $usuario->id,
-            'video_id' => $video->id,
-            'valora'   => 4,
-        ]);
         $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "videos/{$video->id}/puntuacion", [
             'user_id' => $usuario->id,
             'valora'  => 5,
         ]);
-
         $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['message' => 'Puntuación agregada o actualizada exitosamente.']);
+        $response->assertJson(['message' => 'Video agregado a la playlist "Favoritos".']);
         $this->assertDatabaseHas('puntua', ['user_id' => $usuario->id, 'video_id' => $video->id, 'valora' => 5]);
         $this->assertDatabaseHas('video_lista', ['playlist_id' => $playlistDeFavoritos->id, 'video_id' => $video->id]);
     }
@@ -156,8 +150,8 @@ class PuntuaControllerTest extends TestCase
             'user_id'  => $userId,
             'video_id' => 2,
             'valora'   => 5,
-        ]);
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "usuarios/{$userId}/puntuaciones");
+        ]); 
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/usuario/{$userId}/puntuaciones");
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJsonFragment(['user_id' => $userId, 'valora' => 4]);
         $response->assertJsonFragment(['user_id' => $userId, 'valora' => 5]);
@@ -167,7 +161,7 @@ class PuntuaControllerTest extends TestCase
     {
         $userId = 999;
         Puntua::where('user_id', $userId)->delete();
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "usuarios/{$userId}/puntuaciones");
+        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "videos/usuario/{$userId}/puntuaciones");
         $response->assertStatus(Response::HTTP_NOT_FOUND);
         $response->assertJson(['message' => 'No hay puntuaciones para este usuario.']);
     }

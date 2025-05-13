@@ -39,8 +39,7 @@ class ReportaControllerTest extends TestCase
     }
     public function testPuedeListarReportes()
     {
-        $response = $this->getJson($this->baseUrl() . 'reporte');
-
+        $response = $this->getJson($this->baseUrl() . 'reporte/video');
         $response->assertStatus(Response::HTTP_OK);
         $response->assertJsonStructure([
             '*' => [

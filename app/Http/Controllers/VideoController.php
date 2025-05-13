@@ -411,6 +411,8 @@ class VideoController extends Controller
         }
         $videoRelacionado->pivot->increment('vistos');
         $video = $this->obtenerVideoPorId($videoRelacionado->id);
+        $this->ajustarRutasDeVideos($video);
+        $video->promedio_puntuaciones = $video->puntuacion_promedio;
         return response()->json($video, 200);
     }
 

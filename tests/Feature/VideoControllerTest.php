@@ -217,11 +217,4 @@ class VideoControllerTest extends TestCase
         $this->assertEquals($publicidades->first()->prioridad, 1, 'La publicidad con mayor prioridad no fue seleccionada.');
     }
 
-    /*
-modifirar el metodo del controaldor para que sea testeable. que devuelva la cantidad de vistas antes de sumar las vistos del video de la publicidad
-    public function testIncrementarConteoDeVistos()
-    {
-
-    }
-*/
 }
