@@ -23,7 +23,7 @@ class PlaylistControllerTest extends TestCase
             'user_id' => $user->id,
         ]);
 
-        $response->assertStatus(Response::HTTP_CREATED);
+        $response->assertStatus(Response::HTTP_OK);
         $response->assertJson(['message' => 'Playlist creada exitosamente.']);
         $this->assertDatabaseHas('playlists', [
             'nombre'  => 'Nueva Playlist',
@@ -38,15 +38,13 @@ class PlaylistControllerTest extends TestCase
             'acceso'  => true,
             'user_id' => User::first()->id,
         ]);
-
         $videos = Video::take(3)->pluck('id')->toArray();
 
         $response = $this->postJson(env('BLITZVIDEO_BASE_URL') . "playlists/{$playlist->id}/videos", [
             'video_ids' => $videos,
         ]);
-
         $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['mensaje' => 'Videos agregados a la playlist exitosamente.']);
+        $response->assertJson(['message' => 'Videos agregados exitosamente.']);
         foreach ($videos as $videoId) {
             $this->assertDatabaseHas('video_lista', [
                 'playlist_id' => $playlist->id,
@@ -71,7 +69,7 @@ class PlaylistControllerTest extends TestCase
         ]);
 
         $response->assertStatus(Response::HTTP_BAD_REQUEST);
-        $response->assertJson(['mensaje' => 'Todos los videos ya están en la playlist.']);
+        $response->assertJson(['message' => 'Todos los videos ya están en la playlist.']);
     }
 
     public function testPuedeQuitarVideoDePlaylist()
@@ -90,16 +88,16 @@ class PlaylistControllerTest extends TestCase
         ]);
 
         $response->assertStatus(Response::HTTP_OK);
-        $response->assertJson(['message' => 'Video quitado de la playlist exitosamente.']);
+        $response->assertJson(['message' => 'Video quitado exitosamente.']);
         $this->assertDatabaseMissing('video_lista', [
             'playlist_id' => $playlist->id,
             'video_id'    => $video->id,
         ]);
     }
+    
     public function testPuedeObtenerPlaylistConVideos()
     {
-        $user = User::first();
-
+        $user     = User::first();
         $playlist = Playlist::create([
             'nombre'  => 'Playlist para Prueba',
             'acceso'  => true,
@@ -107,27 +105,37 @@ class PlaylistControllerTest extends TestCase
         ]);
         $videos = Video::take(3)->get();
         $playlist->videos()->attach($videos->pluck('id'));
-
         $response = $this->getJson("/api/v1/playlists/{$playlist->id}/videos");
-
         $response->assertStatus(Response::HTTP_OK);
-
-        $response->assertJson([
-            'playlist' => [
-                'id'      => $playlist->id,
-                'nombre'  => $playlist->nombre,
-                'acceso'  => $playlist->acceso,
-                'user_id' => $playlist->user_id,
+        $response->assertJsonStructure([
+            'data' => [
+                'playlist' => [
+                    'id',
+                    'nombre',
+                    'acceso',
+                    'user_id',
+                    'created_at',
+                    'updated_at',
+                    'deleted_at',
+                ],
+                'videos'   => [
+                    '*' => [
+                        'id',
+                        'titulo',
+                        'descripcion',
+                        'miniatura',
+                        'link',
+                        'canal_id',
+                        'duracion',
+                        'bloqueado',
+                        'acceso',
+                        'created_at',
+                        'updated_at',
+                        'deleted_at',
+                        'pivot',
+                    ],
+                ],
             ],
-            'videos'   => $videos->map(function ($video) {
-                return [
-                    'id'          => $video->id,
-                    'titulo'      => $video->titulo,
-                    'descripcion' => $video->descripcion,
-                    'miniatura'   => $video->miniatura,
-                    'link'        => $video->link,
-                ];
-            })->toArray(),
         ]);
     }
 

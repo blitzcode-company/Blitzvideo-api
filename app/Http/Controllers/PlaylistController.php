@@ -1,166 +1,170 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Playlist;
-use App\Models\Video;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class PlaylistController extends Controller
 {
-    public function CrearPlaylist(Request $request)
+    public function crearPlaylist(Request $request)
     {
-        $validatedData = $request->validate([
-            'nombre' => 'required|string|max:255',
-            'acceso' => 'required|boolean',
-            'user_id' => 'required|exists:users,id',
-            'video_id' => 'nullable|exists:videos,id',
-        ]);
-    
-        $playlist = Playlist::create([
-            'nombre' => $validatedData['nombre'],
-            'acceso' => $validatedData['acceso'],
-            'user_id' => $validatedData['user_id'],
-        ]);
+        $validatedData = $this->validatePlaylistData($request);
+        $playlist      = Playlist::create($validatedData);
 
-        if (!empty($validatedData['video_id'])) {
+        if (! empty($validatedData['video_id'])) {
             $playlist->videos()->attach($validatedData['video_id']);
         }
-    
-        return response()->json([
-            'message' => 'Playlist creada exitosamente.', 
-            'playlist' => $playlist
-        ], 201);
+        return $this->successResponse('Playlist creada exitosamente.', $playlist);
     }
-    
 
-
-    public function AgregarVideosAPlaylist(Request $request, $playlistId)
+    public function agregarVideosAPlaylist(Request $request, $playlistId)
     {
-        $datosValidados = $this->validarIdsDeVideos($request);
+        $validatedData = $this->validateVideoIds($request);
+        $playlist      = $this->findPlaylist($playlistId);
 
-        $playlist = $this->buscarPlaylistOEliminar($playlistId);
-
-        $nuevosIdsDeVideos = $this->obtenerIdsDeVideosNuevos($playlist, $datosValidados['video_ids']);
-
-        if (empty($nuevosIdsDeVideos)) {
-            return $this->respuestaConError('Todos los videos ya están en la playlist.');
+        $newVideoIds = $this->filterNewVideoIds($playlist, $validatedData['video_ids']);
+        if (empty($newVideoIds)) {
+            return $this->errorResponse('Todos los videos ya están en la playlist.', 400);
         }
 
-        $playlist->videos()->attach($nuevosIdsDeVideos);
-
-        return $this->respuestaConExito('Videos agregados a la playlist exitosamente.', $playlist);
+        $playlist->videos()->attach($newVideoIds);
+        return $this->successResponse('Videos agregados exitosamente.', $playlist->load('videos'));
     }
 
-   
-    public function ListarPlaylistsDeUsuario($userId)
+    public function listarPlaylistsDeUsuario($userId)
     {
-        $user = User::findOrFail($userId);
+        $user      = User::findOrFail($userId);
         $playlists = $user->playlists()->with('videos')->get();
-        return response()->json([
-            'playlists' => $playlists,
-        ], 200);
+
+        $this->processPlaylists($playlists);
+
+        return $this->successResponse('Playlists obtenidas exitosamente.', ['playlists' => $playlists]);
     }
 
-
-    public function QuitarVideoDePlaylist(Request $request, $playlistId)
+    public function obtenerPlaylistConVideos(Request $request, $playlistId)
     {
-        $validatedData = $request->validate([
-            'video_id' => 'required|exists:videos,id'
+        $playlist     = $this->findPlaylist($playlistId);
+        $videoId      = $request->query('video_id');
+        $fromPlaylist = $request->query('fromPlaylist', false);
+
+        $playlistVideos = $this->filterPlaylistVideos($playlist, $videoId, $fromPlaylist);
+        $this->processVideos($playlistVideos);
+
+        return $this->successResponse('Playlist y videos obtenidos exitosamente.', [
+            'playlist' => $playlist,
+            'videos'   => $playlistVideos,
         ]);
-
-        $playlist = Playlist::findOrFail($playlistId);
-        $playlist->videos()->detach($validatedData['video_id']);
-        return response()->json([
-            'message' => 'Video quitado de la playlist exitosamente.',
-            'playlist' => $playlist->load('videos'),
-        ], 200);
     }
 
-    public function BorrarPlaylist($playlistId)
+    public function quitarVideoDePlaylist(Request $request, $playlistId)
     {
-        $playlist = Playlist::findOrFail($playlistId);
+        $validatedData = $request->validate(['video_id' => 'required|exists:videos,id']);
+        $playlist      = $this->findPlaylist($playlistId);
+
+        $playlist->videos()->detach($validatedData['video_id']);
+        return $this->successResponse('Video quitado exitosamente.', $playlist->load('videos'));
+    }
+
+    public function borrarPlaylist($playlistId)
+    {
+        $playlist = $this->findPlaylist($playlistId);
         $playlist->videos()->detach();
         $playlist->delete();
 
-        return response()->json([
-            'message' => 'Playlist borrada exitosamente.',
-        ], 200);
+        return $this->successResponse('Playlist borrada exitosamente.');
     }
 
-
-    public function ModificarPlaylist(Request $request, $playlistId)
+    public function modificarPlaylist(Request $request, $playlistId)
     {
         $validatedData = $request->validate([
             'nombre' => 'required|string|max:255',
             'acceso' => 'required|boolean',
         ]);
 
-        $playlist = Playlist::findOrFail($playlistId);
+        $playlist = $this->findPlaylist($playlistId);
+        $playlist->update($validatedData);
 
-        $playlist->nombre = $validatedData['nombre'];
-        $playlist->acceso = $validatedData['acceso'];
-        $playlist->save();
-
-        return response()->json([
-            'message' => 'Playlist modificada exitosamente.',
-            'playlist' => $playlist
-        ], 200);
+        return $this->successResponse('Playlist modificada exitosamente.', $playlist);
     }
 
-    public function ObtenerPlaylistConVideos(Request $request, $playlistId)
-    {
-        $playlist = Playlist::findOrFail($playlistId);
-        
-        $videoId = $request->query('video_id');
-        
-        $fromPlaylist = $request->query('fromPlaylist', false); 
-        
-        $playlistVideos = $playlist->videos()
-            ->when($videoId && $fromPlaylist, function ($query, $videoId) {
-                return $query->where('videos.id', '!=', $videoId); 
-            })
-            ->get();
-        
-        return response()->json([
-            'playlist' => $playlist,
-            'videos' => $playlistVideos,
-        ], 200);
-    }
-    protected function validarIdsDeVideos(Request $request)
+    private function validatePlaylistData(Request $request)
     {
         return $request->validate([
-            'video_ids' => 'required|array',
-            'video_ids.*' => 'exists:videos,id'
+            'nombre'   => 'required|string|max:255',
+            'acceso'   => 'required|boolean',
+            'user_id'  => 'required|exists:users,id',
+            'video_id' => 'nullable|exists:videos,id',
         ]);
     }
 
-    protected function buscarPlaylistOEliminar($playlistId)
+    private function validateVideoIds(Request $request)
+    {
+        return $request->validate([
+            'video_ids'   => 'required|array',
+            'video_ids.*' => 'exists:videos,id',
+        ]);
+    }
+
+    private function findPlaylist($playlistId)
     {
         return Playlist::findOrFail($playlistId);
     }
 
-    protected function obtenerIdsDeVideosNuevos(Playlist $playlist, array $videoIds)
+    private function filterNewVideoIds(Playlist $playlist, array $videoIds)
     {
-        $idsDeVideosExistentes = $playlist->videos->pluck('id')->toArray();
-        return array_diff($videoIds, $idsDeVideosExistentes);
+        $existingIds = $playlist->videos->pluck('id')->toArray();
+        return array_diff($videoIds, $existingIds);
     }
 
-    protected function respuestaConExito($mensaje, Playlist $playlist)
+    private function filterPlaylistVideos(Playlist $playlist, $videoId, $fromPlaylist)
     {
-        return response()->json([
-            'mensaje' => $mensaje,
-            'playlist' => $playlist->load('videos')
-        ], 200);
+        return $playlist->videos()
+            ->when($videoId && $fromPlaylist, fn($query) => $query->where('videos.id', '!=', $videoId))
+            ->get();
     }
 
-    protected function respuestaConError($mensaje)
+    private function processPlaylists($playlists)
     {
-        return response()->json([
-            'mensaje' => $mensaje
-        ], 400);
+        $host   = $this->getHost();
+        $bucket = $this->getBucket();
+
+        $playlists->each(fn($playlist) => $this->processVideos($playlist->videos, $host, $bucket));
     }
 
+    private function processVideos($videos, $host = null, $bucket = null)
+    {
+        $host   = $host ?? $this->getHost();
+        $bucket = $bucket ?? $this->getBucket();
 
+        $videos->each(function ($video) use ($host, $bucket) {
+            $video->miniatura = $this->getFileUrl($video->miniatura, $host, $bucket);
+            $video->link      = $this->getFileUrl($video->link, $host, $bucket);
+        });
+    }
+
+    private function getFileUrl($relativePath, $host, $bucket)
+    {
+        return $relativePath ? $host . $bucket . $relativePath : null;
+    }
+
+    private function getHost()
+    {
+        return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+    }
+
+    private function getBucket()
+    {
+        return env('AWS_BUCKET') . '/';
+    }
+
+    private function successResponse($message, $data = null)
+    {
+        return response()->json(['message' => $message, 'data' => $data], 200);
+    }
+
+    private function errorResponse($message, $statusCode)
+    {
+        return response()->json(['message' => $message], $statusCode);
+    }
 }
