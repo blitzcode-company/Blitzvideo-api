@@ -7,18 +7,12 @@ use Illuminate\Http\Request;
 
 class SuscribeController extends Controller
 {
-    public function Suscribirse(Request $request, $canal_id)
+    public function suscribirse(Request $request, $canal_id)
     {
         $this->validarUsuario($request);
 
-        $suscripcionExistente = Suscribe::where('user_id', $request->user_id)
-            ->where('canal_id', $canal_id)
-            ->first();
-
-        if ($suscripcionExistente) {
-            return response()->json([
-                'message' => 'Ya estás suscrito a este canal.',
-            ], 409);
+        if ($this->existeSuscripcion($request->user_id, $canal_id)) {
+            return response()->json(['message' => 'Ya estás suscrito a este canal.'], 409);
         }
 
         $suscribe = Suscribe::create([
@@ -32,18 +26,14 @@ class SuscribeController extends Controller
         ], 201);
     }
 
-    public function AnularSuscripcion(Request $request, $canal_id)
+    public function anularSuscripcion(Request $request, $canal_id)
     {
         $this->validarUsuario($request);
 
-        $suscribe = Suscribe::where('user_id', $request->user_id)
-            ->where('canal_id', $canal_id)
-            ->first();
+        $suscribe = $this->obtenerSuscripcion($request->user_id, $canal_id);
 
         if (! $suscribe) {
-            return response()->json([
-                'message' => 'No estás suscrito a este canal.',
-            ], 404);
+            return response()->json(['message' => 'No estás suscrito a este canal.'], 404);
         }
 
         $suscribe->delete();
@@ -51,63 +41,53 @@ class SuscribeController extends Controller
         return response()->json(['message' => 'Suscripción anulada exitosamente.'], 200);
     }
 
-    public function VerificarSuscripcion(Request $request, $canal_id, $user_id)
+    public function verificarSuscripcion(Request $request, $canal_id, $user_id)
     {
         $this->validarUsuario($request);
+
         $canal = Canal::find($canal_id);
-        if ($canal->user_id == $user_id) {
+
+        if ($canal && $canal->user_id == $user_id) {
             return response()->json(['estado' => 'propietario'], 200);
         }
-        $suscripcionExistente = Suscribe::where('user_id', $user_id)
-            ->where('canal_id', $canal_id)
-            ->exists();
-        if ($suscripcionExistente) {
-            return response()->json(['estado' => 'suscrito'], 200);
-        } else {
-            return response()->json(['estado' => 'desuscrito'], 200);
-        }
+
+        $estado = $this->existeSuscripcion($user_id, $canal_id) ? 'suscrito' : 'desuscrito';
+
+        return response()->json(['estado' => $estado], 200);
     }
 
-    public function ListarSuscripciones()
+    public function listarSuscripciones()
     {
-        $suscripciones = Suscribe::with(['canal.user' => function ($query) {
-            $query->select('id', 'foto');
-        }])->get();
+        $suscripciones = Suscribe::with(['canal.user:id,foto'])->get();
 
         return response()->json($suscripciones, 200);
     }
 
-    public function ListarSuscripcionesUsuario($user_id)
+    public function listarSuscripcionesUsuario($user_id)
     {
         $suscripciones = Suscribe::where('user_id', $user_id)
             ->with([
                 'canal.user:id,foto',
-                'canal.streams' => function ($query) {
-                    $query->latest();
-                },
+                'canal.streams' => fn($query) => $query->latest(),
             ])->get();
 
         if ($suscripciones->isEmpty()) {
-            return response()->json([
-                'message' => 'Este usuario no tiene suscripciones.',
-            ], 404); 
+            return response()->json(['message' => 'Este usuario no tiene suscripciones.'], 404);
         }
-        $resultado = $suscripciones->map(function ($suscripcion) {
-            $canal             = $suscripcion->canal;
-            $streamRelacionado = $canal->streams;
-            return [
-                'id'           => $canal->id,
-                'nombre'       => $canal->nombre,
-                'descripcion'  => $canal->descripcion,
-                'portada'      => $canal->portada,
-                'user'         => $canal->user,
-                'canal_online' => $streamRelacionado ? (bool) $streamRelacionado->activo : false,
-            ];
-        });
+
+        $resultado = $suscripciones->map(fn($suscripcion) => [
+            'id'           => $suscripcion->canal->id,
+            'nombre'       => $suscripcion->canal->nombre,
+            'descripcion'  => $suscripcion->canal->descripcion,
+            'portada'      => $suscripcion->canal->portada,
+            'user'         => $suscripcion->canal->user,
+            'canal_online' => $suscripcion->canal->streams ? (bool) $suscripcion->canal->streams->activo : false,
+        ]);
+
         return response()->json($resultado, 200);
     }
 
-    public function ContarSuscripciones($canal_id)
+    public function contarSuscripciones($canal_id)
     {
         $numeroSuscripciones = Suscribe::where('canal_id', $canal_id)->count();
 
@@ -122,5 +102,19 @@ class SuscribeController extends Controller
         $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
+    }
+
+    private function existeSuscripcion($user_id, $canal_id)
+    {
+        return Suscribe::where('user_id', $user_id)
+            ->where('canal_id', $canal_id)
+            ->exists();
+    }
+
+    private function obtenerSuscripcion($user_id, $canal_id)
+    {
+        return Suscribe::where('user_id', $user_id)
+            ->where('canal_id', $canal_id)
+            ->first();
     }
 }
