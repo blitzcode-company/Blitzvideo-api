@@ -48,19 +48,31 @@ class CanalControllerTest extends TestCase
     public function testListarCanalPorId()
     {
         $canal = Canal::first();
+        $canalId = $canal->id;
+
         $this->assertNotNull($canal, 'Canal no encontrado.');
-        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . 'canal/' . $canal->id . '/videos');
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "canal/{$canalId}");
         $response->assertStatus(200);
         $response->assertJsonStructure([
             '*' => [
                 'id',
-                'canal_id',
-                'titulo',
+                'user_id',
+                'nombre',
                 'descripcion',
-                'link',
+                'portada',
+                'deleted_at',
                 'created_at',
                 'updated_at',
-                'deleted_at',
+                'user' => [
+                    'id',
+                    'name',
+                    'email',
+                    'email_verified_at',
+                    'premium',
+                    'foto',
+                    'created_at',
+                    'updated_at',
+                ],
             ],
         ]);
     }
