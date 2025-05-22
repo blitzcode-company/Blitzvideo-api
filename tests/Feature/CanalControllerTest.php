@@ -49,30 +49,26 @@ class CanalControllerTest extends TestCase
     {
         $canal = Canal::first();
         $canalId = $canal->id;
-
-        $this->assertNotNull($canal, 'Canal no encontrado.');
         $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "canal/{$canalId}");
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            '*' => [
+            'id',
+            'user_id',
+            'nombre',
+            'descripcion',
+            'portada',
+            'deleted_at',
+            'created_at',
+            'updated_at',
+            'user' => [
                 'id',
-                'user_id',
-                'nombre',
-                'descripcion',
-                'portada',
-                'deleted_at',
+                'name',
+                'email',
+                'email_verified_at',
+                'premium',
+                'foto',
                 'created_at',
                 'updated_at',
-                'user' => [
-                    'id',
-                    'name',
-                    'email',
-                    'email_verified_at',
-                    'premium',
-                    'foto',
-                    'created_at',
-                    'updated_at',
-                ],
             ],
         ]);
     }
