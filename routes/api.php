@@ -46,6 +46,8 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
+        Route::get('/{canalId}', [CanalController::class, 'obtenerCanalPorId']);
+
         Route::get('/usuario', [CanalController::class, 'listarCanales']);
         Route::get('/suscripciones', [SuscribeController::class, 'ListarSuscripciones']);
         Route::get('/usuario/{userId}/suscripciones', [SuscribeController::class, 'ListarSuscripcionesUsuario']);

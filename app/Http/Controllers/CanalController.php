@@ -47,6 +47,15 @@ class CanalController extends Controller
         return response()->json($videos, 200);
     }
 
+    public function obtenerCanalPorId($id)
+    {
+        $canal = Canal::with('user')->find($id);
+        if (!$canal) {
+            return response()->json(['message' => 'Canal no encontrado'], 404);
+        }
+        return response()->json($canal);
+    }
+
     private function obtenerVideosConRelaciones($canalId)
     {
         return Video::where('canal_id', $canalId)

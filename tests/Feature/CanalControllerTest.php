@@ -45,6 +45,26 @@ class CanalControllerTest extends TestCase
         ]);
     }
 
+    public function testListarCanalPorId()
+    {
+        $canal = Canal::first();
+        $this->assertNotNull($canal, 'Canal no encontrado.');
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . 'canal/' . $canal->id . '/videos');
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            '*' => [
+                'id',
+                'canal_id',
+                'titulo',
+                'descripcion',
+                'link',
+                'created_at',
+                'updated_at',
+                'deleted_at',
+            ],
+        ]);
+    }
+
     public function testListarVideosDeCanal()
     {
         $canal = Canal::first();
@@ -67,6 +87,10 @@ class CanalControllerTest extends TestCase
             ],
         ]);
     }
+
+
+
+    
 
     public function testCrearCanalUsuarioExistenteConCanal()
     {
