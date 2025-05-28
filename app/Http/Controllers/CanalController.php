@@ -33,9 +33,18 @@ class CanalController extends Controller
 
     private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
     {
-        return $rutaRelativa ? $host . $bucket . $rutaRelativa : null;
+        if (! $rutaRelativa) {
+            return null;
+        }
+        if (str_starts_with($rutaRelativa, $host . $bucket)) {
+            return $rutaRelativa;
+        }
+        if (filter_var($rutaRelativa, FILTER_VALIDATE_URL)) {
+            return $rutaRelativa;
+        }
+        return $host . $bucket . $rutaRelativa;
     }
-
+    
     public function listarVideosDeCanal($canalId)
     {
         $videos = $this->obtenerVideosConRelaciones($canalId);
@@ -50,7 +59,7 @@ class CanalController extends Controller
     public function obtenerCanalPorId($id)
     {
         $canal = Canal::with('user')->find($id);
-        if (!$canal) {
+        if (! $canal) {
             return response()->json(['message' => 'Canal no encontrado'], 404);
         }
         return response()->json($canal);

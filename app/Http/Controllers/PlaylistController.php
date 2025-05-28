@@ -138,15 +138,25 @@ class PlaylistController extends Controller
         $bucket = $bucket ?? $this->getBucket();
 
         $videos->each(function ($video) use ($host, $bucket) {
-            $video->miniatura = $this->getFileUrl($video->miniatura, $host, $bucket);
-            $video->link      = $this->getFileUrl($video->link, $host, $bucket);
+            $video->miniatura = $this->obtenerUrlArchivo($video->miniatura, $host, $bucket);
+            $video->link      = $this->obtenerUrlArchivo($video->link, $host, $bucket);
         });
     }
 
-    private function getFileUrl($relativePath, $host, $bucket)
+    private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
     {
-        return $relativePath ? $host . $bucket . $relativePath : null;
+        if (! $rutaRelativa) {
+            return null;
+        }
+        if (str_starts_with($rutaRelativa, $host . $bucket)) {
+            return $rutaRelativa;
+        }
+        if (filter_var($rutaRelativa, FILTER_VALIDATE_URL)) {
+            return $rutaRelativa;
+        }
+        return $host . $bucket . $rutaRelativa;
     }
+    
 
     private function getHost()
     {

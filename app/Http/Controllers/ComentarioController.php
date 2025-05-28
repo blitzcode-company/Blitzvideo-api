@@ -33,9 +33,18 @@ class ComentarioController extends Controller
 
     private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
     {
-        return $rutaRelativa ? $host . $bucket . $rutaRelativa : null;
+        if (! $rutaRelativa) {
+            return null;
+        }
+        if (str_starts_with($rutaRelativa, $host . $bucket)) {
+            return $rutaRelativa;
+        }
+        if (filter_var($rutaRelativa, FILTER_VALIDATE_URL)) {
+            return $rutaRelativa;
+        }
+        return $host . $bucket . $rutaRelativa;
     }
-
+    
     public function crearComentario(Request $request, $idVideo)
     {
         $this->validarComentario($request);
