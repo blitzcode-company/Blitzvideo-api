@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CanalController;
+use App\Http\Controllers\ChatStreamController;
 use App\Http\Controllers\ComentarioController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
@@ -18,6 +19,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VisitaController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -72,6 +75,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
         Route::post('/iniciar', [StreamController::class, 'IniciarStream']);
         Route::post('/finalizar', [StreamController::class, 'FinalizarStream']);
+        Route::get('/chat/mensajes/{streamId}', [ChatStreamController::class, 'obtenerMensajes']);
+
     });
     Route::prefix('publicidad')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarPublicidad']);
@@ -93,6 +98,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/reportante/{userId}', [ReportaUsuarioController::class, 'listarReportesPorReportante']);
         });
     });
+
 });
 
 Route::prefix('v1')->middleware('auth.api')->group(function () {
@@ -171,6 +177,9 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
         Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
+        
+        Route::post('/chat/enviar', [ChatStreamController::class, 'mandarMensaje']);
     });
+
 
 });
