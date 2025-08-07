@@ -215,7 +215,7 @@ class StreamController extends Controller
 
     private function eliminarArchivoStream($transmision)
     {
-        $archivo = $this->ObtenerArchivoEnMinio($transmision);
+        $archivo = $this->obtenerArchivoFLVDesdeMinio($transmision);
         if ($archivo) {
             $rutaArchivo = "streams/{$archivo}";
             if (Storage::disk('s3')->exists($rutaArchivo)) {

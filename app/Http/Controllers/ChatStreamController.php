@@ -34,9 +34,6 @@ class ChatStreamController extends Controller
         $mensaje->load('user'); 
         
         event(new MensajeChatStream($mensaje));
-        \Log::info('MensajeChatStream evento disparado', ['mensaje_id' => $mensaje->id]);
-
-    
         return response()->json(['status' => 'Mensaje enviado', 'mensaje' => $mensaje]);
     }
     
