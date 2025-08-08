@@ -59,9 +59,22 @@ class CanalController extends Controller
     public function obtenerCanalPorId($id)
     {
         $canal = Canal::with('user')->find($id);
+    
         if (! $canal) {
             return response()->json(['message' => 'Canal no encontrado'], 404);
         }
+    
+        $host   = $this->obtenerHostMinio();
+        $bucket = $this->obtenerBucket();
+    
+        if ($canal->portada) {
+            $canal->portada = $this->obtenerUrlArchivo($canal->portada, $host, $bucket);
+        }
+    
+        if ($canal->user && $canal->user->foto) {
+            $canal->user->foto = $this->obtenerUrlArchivo($canal->user->foto, $host, $bucket);
+        }
+    
         return response()->json($canal);
     }
 
