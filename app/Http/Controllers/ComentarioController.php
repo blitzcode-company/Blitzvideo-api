@@ -17,8 +17,10 @@ class ComentarioController extends Controller
     {
         return Comentario::with(['user:id,name,foto'])
             ->where('video_id', $idVideo)
+            ->orderBy('created_at', 'desc')
             ->get();
     }
+
 
     private function procesarFotosDeUsuarios($comentarios)
     {
