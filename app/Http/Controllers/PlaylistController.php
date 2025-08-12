@@ -116,12 +116,12 @@ class PlaylistController extends Controller
         $existingIds = $playlist->videos->pluck('id')->toArray();
         return array_diff($videoIds, $existingIds);
     }
-
     private function filterPlaylistVideos(Playlist $playlist, $videoId, $fromPlaylist)
     {
         return $playlist->videos()
-            ->with('canal.user') 
-            ->when($videoId && $fromPlaylist, fn($query) => $query->where('videos.id', '!=', $videoId))
+            ->with('canal.user')
+            ->withCount('visitas') 
+            ->when($videoId && !$fromPlaylist, fn($query) => $query->where('videos.id', '!=', $videoId))
             ->get();
     }
 
