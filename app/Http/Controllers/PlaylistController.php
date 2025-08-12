@@ -120,6 +120,7 @@ class PlaylistController extends Controller
     private function filterPlaylistVideos(Playlist $playlist, $videoId, $fromPlaylist)
     {
         return $playlist->videos()
+            ->with('canal.user') 
             ->when($videoId && $fromPlaylist, fn($query) => $query->where('videos.id', '!=', $videoId))
             ->get();
     }
