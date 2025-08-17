@@ -98,6 +98,11 @@ class UserController extends Controller
     private function guardarFotoEnS3($foto, $userId)
     {
         $folderPath = 'perfil/' . $userId;
-        return $foto->store($folderPath, 's3');
+        $path = $foto->store($folderPath, 's3'); 
+    
+        $host = str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+        $bucket = env('AWS_BUCKET') . '/';
+    
+        return $host . $bucket . $path;
     }
 }

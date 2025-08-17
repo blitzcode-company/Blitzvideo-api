@@ -210,10 +210,14 @@ class CanalController extends Controller
 
     private function actualizarPortadaCanal(Canal $canal, $portada)
     {
-        $userId         = $canal->user_id;
-        $folderPath     = 'portada/' . $userId;
-        $rutaFoto       = $portada->store($folderPath, 's3');
-        $canal->portada = $rutaFoto;
+        $userId     = $canal->user_id;
+        $folderPath = 'portada/' . $userId;
+        $path       = $portada->store($folderPath, 's3');
+    
+        $host   = str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+        $bucket = env('AWS_BUCKET') . '/';
+    
+        $canal->portada = $host . $bucket . $path;
     }
 
     private function guardarCanal(Canal $canal)
@@ -224,14 +228,18 @@ class CanalController extends Controller
     private function guardarPortada(Request $request, Canal $canal)
     {
         if ($request->hasFile('portada')) {
-            $portada        = $request->file('portada');
-            $userId         = $canal->user_id;
-            $folderPath     = 'portadas/' . $userId;
-            $rutaPortada    = $portada->store($folderPath, 's3');
-            $canal->portada = $rutaPortada;
+            $portada    = $request->file('portada');
+            $userId     = $canal->user_id;
+            $folderPath = 'portadas/' . $userId;
+            $path       = $portada->store($folderPath, 's3');
+    
+            $host   = str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+            $bucket = env('AWS_BUCKET') . '/';
+    
+            $canal->portada = $host . $bucket . $path;
         }
     }
-
+    
     public function cambiarEstadoNotificaciones(Request $request, $canalId, $userId)
     {
         $request->validate([
