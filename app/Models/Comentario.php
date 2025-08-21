@@ -23,6 +23,9 @@ class Comentario extends Model
         'bloqueado' => 'boolean',
     ];
 
+    protected $appends = ['contadorDeLikes'];
+
+
     public function user()
     {
         return $this->belongsTo(User::class, 'usuario_id');
@@ -53,4 +56,8 @@ class Comentario extends Model
         return $this->hasMany(ReportaComentario::class);
     }
 
+    public function getContadorDeLikesAttribute()
+    {
+        return $this->likes->count();
+    }
 }

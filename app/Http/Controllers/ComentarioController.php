@@ -6,19 +6,32 @@ use Illuminate\Http\Request;
 
 class ComentarioController extends Controller
 {
-    public function traerComentariosDeVideo($idVideo)
+    public function traerComentariosDeVideo(Request $request, $idVideo)
     {
-        $comentarios = $this->obtenerComentariosConUsuario($idVideo);
+        $userId = $request->query('usuario_id');
+    
+        $comentarios = $this->obtenerComentariosConUsuario($idVideo, $userId);
         $this->procesarFotosDeUsuarios($comentarios);
+    
         return response()->json($comentarios, 200);
     }
-
-    private function obtenerComentariosConUsuario($idVideo)
+    
+    private function obtenerComentariosConUsuario($idVideo, $userId = null)
     {
-        return Comentario::with(['user:id,name,foto'])
+        return Comentario::with(['user:id,name,foto', 'likes'])
             ->where('video_id', $idVideo)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(fn($comentario) => $this->agregarEstadoMeGusta($comentario, $userId));
+    }
+    
+    private function agregarEstadoMeGusta($comentario, $userId)
+    {        
+        $comentario->likedByUser = $userId ? $comentario->likes->contains('usuario_id', $userId) : false;
+        $comentario->meGustaId = $userId ? $comentario->likes->where('usuario_id', $userId)->first()?->id : null;
+    
+        unset($comentario->likes); 
+        return $comentario;
     }
 
 

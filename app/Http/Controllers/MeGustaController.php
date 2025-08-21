@@ -47,36 +47,6 @@ class MeGustaController extends Controller
         return response()->json(['message' => 'Me Gusta no encontrado.'], 404);
     }
     
-    public function obtenerEstadoMeGusta($idComentario, Request $request)
-    {
-        $userId = $request->query('userId'); 
-
-        if (!$userId) {
-            return response()->json(['error' => 'ID de usuario no proporcionado.'], 400);
-        }
-
-        $likedByUser = MeGusta::where('comentario_id', $idComentario)
-            ->where('usuario_id', $userId)
-            ->exists();
-
-        $meGustaId = MeGusta::where('comentario_id', $idComentario)
-            ->where('usuario_id', $userId)
-            ->value('id');
-
-        return response()->json([
-            'likedByUser' => $likedByUser,
-            'meGustaId' => $meGustaId,
-        ]);
-    }
-
-    public function ContadorDeMeGustasPorComentario($idComentario) {
-         
-        $cantidadDeMeGustas = MeGusta::where('comentario_id', $idComentario)->count();
-
-        return response()->json([
-            'comentario_id' => $idComentario,
-            'cantidadDeMeGustas' => $cantidadDeMeGustas,
-        ]);
-    }
+  
 
 }
