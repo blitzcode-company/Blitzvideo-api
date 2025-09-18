@@ -18,7 +18,7 @@ class ComentarioController extends Controller
     
     private function obtenerComentariosConUsuario($idVideo, $userId = null)
     {
-        return Comentario::with(['user:id,name,foto', 'likes'])
+        return Comentario::with(['user:id,name,foto', 'likes', 'video.canal.user:id'])
             ->where('video_id', $idVideo)
             ->orderBy('created_at', 'desc')
             ->get()
@@ -29,7 +29,19 @@ class ComentarioController extends Controller
     {        
         $comentario->likedByUser = $userId ? $comentario->likes->contains('usuario_id', $userId) : false;
         $comentario->meGustaId = $userId ? $comentario->likes->where('usuario_id', $userId)->first()?->id : null;
+
+        $comentario->puedeBorrar = false;
+
+        if ($userId) {
+            $esAutorComentario = $comentario->usuario_id === (int) $userId;
     
+            $esDuenoVideo = $comentario->video 
+                && $comentario->video->canal 
+                && (int) $comentario->video->canal->user_id === (int) $userId;
+    
+            $comentario->puedeBorrar = $esAutorComentario || $esDuenoVideo;
+        }
+
         unset($comentario->likes); 
         return $comentario;
     }
@@ -134,14 +146,21 @@ class ComentarioController extends Controller
     public function bajaLogicaComentario(Request $request, $idComentario)
     {
         $this->validarUsuarioId($request);
-        $comentario = Comentario::find($idComentario);
-        if (! $comentario) {
+        $comentario = Comentario::with('video')->find($idComentario);
+        if (!$comentario) {
             return $this->respuestaError('El comentario no existe.', 404);
         }
-        if ($comentario->usuario_id !== $request->usuario_id) {
+    
+        $esAutorComentario = $comentario->usuario_id === $request->usuario_id;
+    
+        $esDuenoVideo = $comentario->video && $comentario->video->usuario_id === $request->usuario_id;
+    
+        if (!$esAutorComentario && !$esDuenoVideo) {
             return $this->respuestaError('No tienes permiso para eliminar este comentario.', 403);
         }
+    
         $comentario->delete();
+    
         return $this->respuestaExito('Comentario dado de baja correctamente.');
     }
 
