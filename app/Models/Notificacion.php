@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use App\Models\Video;
+
 
 class Notificacion extends Model
 {
@@ -20,4 +23,5 @@ class Notificacion extends Model
                     ->withPivot('leido')
                     ->withTimestamps();
     }
+
 }
