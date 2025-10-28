@@ -23,7 +23,10 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-
+      soketi:
+        image: quay.io/soketi/soketi:latest
+        ports:
+          - 6001:6001
     steps:
       - uses: actions/checkout@v2
 
