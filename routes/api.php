@@ -41,6 +41,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
         Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
         Route::get('/tendencia/semana', [VideoController::class, 'listarTendencias']);
+        Route::get('/masvistos', [VideoController::class, 'listarVideosMasVistos']);
         Route::get('/{idVideo}/relacionados', [VideoController::class, 'listarVideosRelacionados']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
         Route::get('/{idVideo}/puntuaciones', [PuntuaController::class, 'listarPuntuaciones']);
@@ -58,12 +59,16 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('etiquetas')->group(function () {
         Route::get('/', [EtiquetaController::class, 'listarEtiquetas']);
+        Route::get('/popular', [EtiquetaController::class, 'listarEtiquetasMasPopulares']);
+
         Route::get('/{idEtiqueta}/videos', [EtiquetaController::class, 'listarVideosPorEtiqueta']);
         Route::get('/{etiquetaId}/canal/{canalId}/videos', [EtiquetaController::class, 'filtrarVideosPorEtiquetaYCanal']);
     });
     Route::prefix('playlists')->group(function () {
         Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
         Route::get('/{playlistId}/videos', [PlaylistController::class, 'ObtenerPlaylistConVideos']);
+        Route::get('/{playlistId}/siguiente/{videoId}', [PlaylistController::class, 'obtenerSiguienteVideo']);
+
     });
     Route::prefix('password')->group(function () {
         Route::post('/email', [PasswordResetController::class, 'enviarRestablecerEnlaceCorreo']);
@@ -103,6 +108,7 @@ Route::prefix('v1')->group(function () {
 Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('usuario')->group(function () {
         Route::get('{userId}/visita/{videoId}', [VisitaController::class, 'registrarVisita']);
+        Route::get('{userId}/historial/', [VisitaController::class, 'historial']);
         Route::delete('{userId}', [UserController::class, 'darDeBajaUsuario']);
         Route::post('{userId}', [UserController::class, 'editarUsuario']);
     });

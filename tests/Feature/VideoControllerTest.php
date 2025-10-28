@@ -217,4 +217,5 @@ class VideoControllerTest extends TestCase
         $this->assertEquals($publicidades->first()->prioridad, 1, 'La publicidad con mayor prioridad no fue seleccionada.');
     }
 
+
 }

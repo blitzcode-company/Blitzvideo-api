@@ -12,6 +12,7 @@ class CreateVideoListaTable extends Migration
             $table->id();
             $table->foreignId('playlist_id')->constrained()->onDelete('cascade');
             $table->foreignId('video_id')->constrained()->onDelete('cascade');
+            $table->integer('orden')->nullable();
             $table->timestamps();
         });
     }

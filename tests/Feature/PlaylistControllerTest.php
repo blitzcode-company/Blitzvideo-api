@@ -69,7 +69,64 @@ class PlaylistControllerTest extends TestCase
         ]);
 
         $response->assertStatus(Response::HTTP_BAD_REQUEST);
-        $response->assertJson(['message' => 'Todos los videos ya están en la playlist.']);
+        $response->assertJson(['message' => 'Este video ya está en la playlist.']);
+    }
+
+
+    public function testObtenerSiguienteVideoDeLaPlaylist()
+    {
+        $user = User::first();
+    
+        $playlist = Playlist::create([
+            'nombre' => 'Playlist Siguiente Video',
+            'acceso' => true,
+            'user_id' => $user->id,
+        ]);
+    
+        $videos = Video::take(3)->get();
+    
+        foreach ($videos as $index => $video) {
+            $playlist->videos()->attach($video->id, ['orden' => $index]);
+        }
+    
+        $primerVideo = $videos[0];
+    
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "playlists/{$playlist->id}/siguiente/{$primerVideo->id}");
+    
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson([
+            'message' => 'Siguiente video obtenido.',
+            'data'    => [
+                'id' => $videos[1]->id, 
+            ]
+        ]);
+    }
+
+    public function testNoHaySiguienteVideoSiEsElUltimo()
+    {
+        $user = User::first();
+    
+        $playlist = Playlist::create([
+            'nombre' => 'Playlist Último Video',
+            'acceso' => true,
+            'user_id' => $user->id,
+        ]);
+    
+        $videos = Video::take(2)->get();
+    
+        foreach ($videos as $index => $video) {
+            $playlist->videos()->attach($video->id, ['orden' => $index]);
+        }
+    
+        $ultimoVideo = $videos[1];
+    
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "playlists/{$playlist->id}/siguiente/{$ultimoVideo->id}");
+    
+        $response->assertStatus(Response::HTTP_OK);
+        $response->assertJson([
+            'message' => 'No hay más videos en la playlist.',
+            'data'    => null,
+        ]);
     }
 
     public function testPuedeQuitarVideoDePlaylist()

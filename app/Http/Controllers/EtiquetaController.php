@@ -28,6 +28,25 @@ class EtiquetaController extends Controller
         return response()->json($videos, 200);
     }
 
+    public function listarEtiquetasMasPopulares()
+{
+    $etiquetas = Etiqueta::withCount('videos')
+    ->where('nombre', '!=', 'Publicidad')
+        ->having('videos_count', '>', 0)
+        ->orderBy('videos_count', 'desc') 
+        ->orderBy('nombre')
+        ->get()
+        ->map(function ($etiqueta) {
+            return [
+                'id'     => $etiqueta->id,
+                'nombre' => $etiqueta->nombre,
+                'count'  => $etiqueta->videos_count, 
+            ];
+        });
+
+    return response()->json($etiquetas);
+}
+
     public function listarEtiquetas(Request $request)
     {
         $etiquetas = Etiqueta::all();

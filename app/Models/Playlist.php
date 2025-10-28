@@ -22,6 +22,8 @@ class Playlist extends Model
 
     public function videos()
     {
-        return $this->belongsToMany(Video::class, 'video_lista');
+        return $this->belongsToMany(Video::class, 'video_lista')
+                    ->withPivot('orden')
+                    ->withTimestamps();
     }
 }

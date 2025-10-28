@@ -316,6 +316,27 @@ class VideoController extends Controller
         return response()->json($videos, 200);
     }
 
+    public function listarVideosMasVistos()
+    {
+        $videos = $this->obtenerVideosMasVistos();
+        $this->ajustarRutasDeVideos($videos);
+        return response()->json($videos, 200);
+    }
+    
+    private function obtenerVideosMasVistos()
+    {
+        return Video::with($this->datosDeRelacionesDeVideo())
+            ->withCount($this->obtenerContadoresDePuntuaciones())
+            ->withCount('visitas')
+            ->where('bloqueado', false)
+            ->where('acceso', 'publico')
+            ->whereDoesntHave('publicidad') 
+            ->orderBy('visitas_count', 'desc')
+            ->take(8)
+            ->get()
+            ->each(fn($video) => $video->promedio_puntuaciones = $video->puntuacion_promedio);
+    }
+
     private function obtenerVideosRecomendados($userId)
     {
         $categoriasMasVisitadas = $this->obtenerCategoriasMasVisitadasPorUsuario($userId);

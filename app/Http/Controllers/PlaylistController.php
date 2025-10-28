@@ -12,7 +12,8 @@ class PlaylistController extends Controller
         $validatedData = $this->validatePlaylistData($request);
         $playlist      = Playlist::create($validatedData);
 
-        if (! empty($validatedData['video_id'])) {
+        if (!empty($validatedData['video_id'])) {
+            $videoId = $validatedData['video_id'];
             $playlist->videos()->attach($validatedData['video_id']);
         }
         return $this->successResponse('Playlist creada exitosamente.', $playlist);
@@ -22,14 +23,60 @@ class PlaylistController extends Controller
     {
         $validatedData = $this->validateVideoIds($request);
         $playlist      = $this->findPlaylist($playlistId);
+    
+        $videoIds      = $validatedData['video_ids'];
+        $existenIds   = $playlist->videos->pluck('id')->toArray();
+        $nuevoVideoIds   = array_diff($videoIds, $existenIds);
+        $yaExisten = array_intersect($videoIds, $existenIds);
 
-        $newVideoIds = $this->filterNewVideoIds($playlist, $validatedData['video_ids']);
-        if (empty($newVideoIds)) {
-            return $this->errorResponse('Todos los videos ya están en la playlist.', 400);
+
+        if (empty($nuevoVideoIds)) {
+            return $this->errorResponse('Este video ya está en la playlist.', 400);
+        }
+    
+        $ultimoOrden = $playlist->videos()->max('video_lista.orden') ?? 0;
+        $attachData = [];
+        foreach ($nuevoVideoIds as $videoId) {
+            $attachData[$videoId] = ['orden' => ++$ultimoOrden];
+        }
+        
+        if (empty($nuevoVideoIds) && !empty($yaExisten)) {
+            return $this->errorResponse(
+                'Este video ya está en la playlist.',
+                400
+            );
+        }
+    
+        if (!empty($yaExisten) && !empty($nuevoVideoIds)) {
+            $playlist->videos()->attach($nuevoVideoIds);
+            return $this->successResponse(
+                'Algunos videos ya estaban en la playlist. Se agregaron los nuevos.',
+                $playlist->load('videos')
+            );
+        }
+    
+        $playlist->videos()->attach($nuevoVideoIds);
+        return $this->successResponse(
+            'Videos agregados exitosamente.',
+            $playlist->load('videos')
+        );
+    }
+
+    public function obtenerSiguienteVideo($playlistId, $videoId)
+    {
+        $playlist = $this->findPlaylist($playlistId);
+        $videos = $playlist->videos()->orderBy('video_lista.orden')->get();
+        $currentIndex = $videos->search(fn($video) => $video->id == $videoId);
+    
+        if ($currentIndex === false || $currentIndex === $videos->count() - 1) {
+            return $this->successResponse('No hay más videos en la playlist.', null);
         }
 
-        $playlist->videos()->attach($newVideoIds);
-        return $this->successResponse('Videos agregados exitosamente.', $playlist->load('videos'));
+        $siguienteVideo = $videos[$currentIndex + 1];
+    
+        $this->processVideos(collect([$siguienteVideo]));
+    
+        return $this->successResponse('Siguiente video obtenido.', $siguienteVideo);
     }
 
     public function listarPlaylistsDeUsuario($userId)

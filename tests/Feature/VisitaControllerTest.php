@@ -72,4 +72,81 @@ class VisitaControllerTest extends TestCase
         $response->assertStatus(Response::HTTP_TOO_MANY_REQUESTS);
         $response->assertJson(['message' => 'Debe esperar un minuto antes de registrar una nueva visita.']);
     }
+
+
+
+    public function testPuedeObtenerHistorialDeUsuario()
+{
+    $video1 = Video::create([
+        'titulo' => 'Video Visible 1',
+        'descripcion' => 'Descripción 1',
+        'link' => 'https://blitzvideo.com/video11',
+        'miniatura' => 'https://blitzvideo.com/mini11',
+        'canal_id' => 1,
+        'bloqueado' => false,
+        'acceso' => 'publico',
+    ]);
+
+    $video2 = Video::create([
+        'titulo' => 'Video Visible 2',
+        'descripcion' => 'Descripción 2',
+        'link' => 'https://blitzvideo.com/video12',
+        'miniatura' => 'https://blitzvideo.com/mini12',
+        'canal_id' => 1,
+        'bloqueado' => false,
+        'acceso' => 'publico',
+    ]);
+
+    $videoBloqueado = Video::create([
+        'titulo' => 'Video Bloqueado',
+        'descripcion' => 'Bloqueado',
+        'link' => 'https://blitzvideo.com/video13',
+        'miniatura' => 'https://blitzvideo.com/mini13',
+        'canal_id' => 1,
+        'bloqueado' => true,
+        'acceso' => 'publico',
+    ]);
+
+    Visita::create([
+        'user_id' => $this->usuario->id,
+        'video_id' => $video1->id,
+        'created_at' => now()->subMinutes(5),
+    ]);
+
+    Visita::create([
+        'user_id' => $this->usuario->id,
+        'video_id' => $video2->id,
+        'created_at' => now()->subMinutes(3),
+    ]);
+
+    Visita::create([
+        'user_id' => $this->usuario->id,
+        'video_id' => $videoBloqueado->id,
+        'created_at' => now()->subMinutes(1),
+    ]);
+
+    $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "usuario/{$this->usuario->id}/historial");
+
+    $response->assertStatus(Response::HTTP_OK);
+
+    $data = $response->json();
+    $videoIds = collect($data)->pluck('video_id');
+    $this->assertTrue($videoIds->contains($video1->id));
+    $this->assertTrue($videoIds->contains($video2->id));
+    $this->assertFalse($videoIds->contains($videoBloqueado->id));
+
+    $response->assertJsonStructure([
+        '*' => [
+            'video_id',
+            'titulo',
+            'miniatura',
+            'duracion',
+            'visitas_totales',
+            'visto_en',
+            'canal' => ['id', 'nombre'],
+            'user'  => ['id', 'nombre', 'foto'],
+        ],
+    ]);
+}
+    
 }
