@@ -11,6 +11,8 @@ use FFMpeg\Coordinate\TimeCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Stevebauman\Purify\Facades\Purify;
 
 class VideoController extends Controller
 {
@@ -222,9 +224,11 @@ class VideoController extends Controller
 
     private function crearNuevoVideo($request, $canal, $videoData)
     {
+        $descripcion = $this->procesarDescripcion($request->descripcion);
+
         $video = new Video([
             'titulo'      => $request->titulo,
-            'descripcion' => $request->descripcion,
+            'descripcion' => $descripcion,
             'link'        => $videoData['rutaVideo'],
             'miniatura'   => $videoData['urlMiniatura'],
             'duracion'    => $videoData['duracion'],
@@ -234,6 +238,24 @@ class VideoController extends Controller
         return $video;
     }
 
+    private function procesarDescripcion(string $texto): string
+    {
+        $texto = $this->linkify($texto);
+        $texto = Purify::clean($texto);
+        return $texto;
+    }
+
+
+    private function linkify(string $text): string
+    {
+        $pattern = '/\b(https?:\/\/[^\s<]+[^\s<.,;:!?")\]])/';
+        return preg_replace_callback($pattern, function ($matches) {
+            $url = $matches[0];
+            $display = htmlspecialchars(substr($url, 0, 60)) . (strlen($url) > 60 ? '...' : '');
+            return '<a href="' . e($url) . '" target="_blank" rel="noopener noreferrer">' . $display . '</a>';
+        }, $text);
+    }
+    
     private function asignarEtiquetas($request, $videoId)
     {
         $etiquetasController = new EtiquetaController();

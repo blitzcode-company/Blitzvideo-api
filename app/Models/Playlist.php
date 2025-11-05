@@ -26,4 +26,9 @@ class Playlist extends Model
                     ->withPivot('orden')
                     ->withTimestamps();
     }
+
+    public function usuariosQueLaGuardaron()
+    {
+        return $this->belongsToMany(User::class, 'playlist_guardadas');
+    }
 }

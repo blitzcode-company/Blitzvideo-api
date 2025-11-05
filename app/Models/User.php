@@ -62,4 +62,11 @@ class User extends Authenticatable
             ->withPivot('leido')
             ->withTimestamps();
     }
+
+    public function playlistsGuardadas()
+{
+    return $this->belongsToMany(Playlist::class, 'playlist_guardadas')
+                ->withPivot('orden')
+                ->orderBy('playlist_guardadas.orden');
+}
 }

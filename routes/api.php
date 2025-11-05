@@ -66,8 +66,10 @@ Route::prefix('v1')->group(function () {
     });
     Route::prefix('playlists')->group(function () {
         Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
+        Route::get('/{userId}/playlists-guardadas', [PlaylistController::class, 'listarPlaylistsGuardadasDelUsuario']);
         Route::get('/{playlistId}/videos', [PlaylistController::class, 'ObtenerPlaylistConVideos']);
         Route::get('/{playlistId}/siguiente/{videoId}', [PlaylistController::class, 'obtenerSiguienteVideo']);
+
 
     });
     Route::prefix('password')->group(function () {
@@ -140,6 +142,11 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::delete('/{playlistId}/videos', [PlaylistController::class, 'QuitarVideoDePlaylist']);
         Route::put('/{playlistId}', [PlaylistController::class, 'ModificarPlaylist']);
         Route::delete('/{playlistId}', [PlaylistController::class, 'BorrarPlaylist']);
+        Route::post('/{id}/orden', [PlaylistController::class, 'actualizarOrden']);
+        
+         Route::post('/{playlistId}/guardar', [PlaylistController::class, 'guardarPlaylist']);
+        Route::delete('/{playlistId}/guardar', [PlaylistController::class, 'quitarPlaylistGuardada']);
+        Route::get('/{playlistId}/guardada', [PlaylistController::class, 'estaGuardada']);
     });
 
     Route::prefix('canal')->group(function () {

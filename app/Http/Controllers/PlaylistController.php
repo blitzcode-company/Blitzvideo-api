@@ -62,6 +62,89 @@ class PlaylistController extends Controller
         );
     }
 
+    public function actualizarOrden(Request $request, $playlistId)
+    {
+        $playlist = Playlist::findOrFail($playlistId);
+
+        $orden = $request->input('orden');
+
+        
+        foreach ($orden as $item) {
+            $playlist->videos()->updateExistingPivot($item['video_id'], [
+                'orden' => $item['orden'] 
+            ]);
+        }
+
+        return response()->json(['message' => 'Orden actualizado']);
+    }
+
+    public function guardarPlaylist(Request $request, $playlistId)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id'
+        ]);
+
+        $userId = $request->input('user_id');
+        $user = User::findOrFail($userId);
+
+        $playlist = Playlist::findOrFail($playlistId);
+
+        if ($user->playlistsGuardadas()->where('playlist_id', $playlistId)->exists()) {
+            return $this->errorResponse('Ya tienes esta playlist guardada', 400);
+        }
+
+        $ultimoOrden = $user->playlistsGuardadas()->max('playlist_guardadas.orden') ?? 0;
+        $user->playlistsGuardadas()->attach($playlistId, ['orden' => $ultimoOrden + 1]);
+
+        return response()->json(['message' => 'Playlist guardada en tus listas']);
+
+    }
+
+        public function estaGuardada(Request $request, $playlistId)
+    {
+        $request->validate(['user_id' => 'required|exists:users,id']);
+        $userId = $request->input('user_id');
+
+        $user = User::findOrFail($userId);
+        $guardada = $user->playlistsGuardadas()->where('playlist_id', $playlistId)->exists();
+
+        return response()->json(['guardada' => $guardada]);
+    }
+
+        public function quitarPlaylistGuardada(Request $request, $playlistId)
+    {
+        $request->validate(['user_id' => 'required|exists:users,id']);
+        $userId = $request->input('user_id');
+
+        $user = User::findOrFail($userId);
+        $user->playlistsGuardadas()->detach($playlistId);
+
+        return response()->json(['message' => 'Quitada de tus listas']);
+    }
+
+   public function listarPlaylistsGuardadasDelUsuario($userId)
+    {
+        $user = User::findOrFail($userId);
+
+        $playlists = $user->playlistsGuardadas()
+            ->with(['videos' => function ($query) {
+                $query->orderBy('video_lista.orden', 'asc');
+            }])
+            ->where('acceso', 1) 
+            ->orderBy('playlist_guardadas.orden', 'asc')
+            ->get();
+
+        return response()->json([
+            'message' => 'Playlists guardadas obtenidas',
+            'data' => [
+                'user_id' => $user->id,
+                'playlists' => $playlists
+            ]
+        ]);
+    }
+
+
+
     public function obtenerSiguienteVideo($playlistId, $videoId)
     {
         $playlist = $this->findPlaylist($playlistId);
@@ -98,8 +181,17 @@ class PlaylistController extends Controller
         $playlistVideos = $this->filterPlaylistVideos($playlist, $videoId, $fromPlaylist);
         $this->processVideos($playlistVideos);
 
+        $playlistData = [
+                'id'         => $playlist->id,
+                'nombre'     => $playlist->nombre,
+                'acceso'     => $playlist->acceso,
+                'user_id'    => $playlist->user_id, 
+                'created_at' => $playlist->created_at,
+                'updated_at' => $playlist->updated_at,
+            ];
+
         return $this->successResponse('Playlist y videos obtenidos exitosamente.', [
-            'playlist' => $playlist,
+            'playlist' => $playlistData,
             'videos'   => $playlistVideos,
         ]);
     }
@@ -165,12 +257,18 @@ class PlaylistController extends Controller
     }
     private function filterPlaylistVideos(Playlist $playlist, $videoId, $fromPlaylist)
     {
-        return $playlist->videos()
+        $query = $playlist->videos()
             ->with('canal.user')
-            ->withCount('visitas') 
-            ->when($videoId && !$fromPlaylist, fn($query) => $query->where('videos.id', '!=', $videoId))
-            ->get();
+            ->withCount('visitas')
+            ->orderBy('video_lista.orden', 'asc');
+
+        if ($videoId && !$fromPlaylist) {
+            $query->where('videos.id', '!=', $videoId);
+        }
+
+        return $query->get(); 
     }
+
 
     private function processPlaylists($playlists)
     {
