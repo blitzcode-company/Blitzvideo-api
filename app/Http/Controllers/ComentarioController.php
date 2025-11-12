@@ -9,13 +9,13 @@ class ComentarioController extends Controller
     public function traerComentariosDeVideo(Request $request, $idVideo)
     {
         $userId = $request->query('usuario_id');
-    
+
         $comentarios = $this->obtenerComentariosConUsuario($idVideo, $userId);
         $this->procesarFotosDeUsuarios($comentarios);
-    
+
         return response()->json($comentarios, 200);
     }
-    
+
     private function obtenerComentariosConUsuario($idVideo, $userId = null)
     {
         return Comentario::with(['user:id,name,foto', 'likes', 'video.canal.user:id'])
@@ -24,28 +24,27 @@ class ComentarioController extends Controller
             ->get()
             ->map(fn($comentario) => $this->agregarEstadoMeGusta($comentario, $userId));
     }
-    
+
     private function agregarEstadoMeGusta($comentario, $userId)
-    {        
+    {
         $comentario->likedByUser = $userId ? $comentario->likes->contains('usuario_id', $userId) : false;
-        $comentario->meGustaId = $userId ? $comentario->likes->where('usuario_id', $userId)->first()?->id : null;
+        $comentario->meGustaId   = $userId ? $comentario->likes->where('usuario_id', $userId)->first()?->id : null;
 
         $comentario->puedeBorrar = false;
 
         if ($userId) {
             $esAutorComentario = $comentario->usuario_id === (int) $userId;
-    
-            $esDuenoVideo = $comentario->video 
-                && $comentario->video->canal 
-                && (int) $comentario->video->canal->user_id === (int) $userId;
-    
+
+            $esDuenoVideo = $comentario->video
+            && $comentario->video->canal
+            && (int) $comentario->video->canal->user_id === (int) $userId;
+
             $comentario->puedeBorrar = $esAutorComentario || $esDuenoVideo;
         }
 
-        unset($comentario->likes); 
+        unset($comentario->likes);
         return $comentario;
     }
-
 
     private function procesarFotosDeUsuarios($comentarios)
     {
@@ -71,17 +70,16 @@ class ComentarioController extends Controller
         }
         return $host . $bucket . $rutaRelativa;
     }
-    
+
     public function crearComentario(Request $request, $idVideo)
     {
         $this->validarComentario($request);
         $comentario = $this->guardarComentario($request, [
             'video_id' => $idVideo,
         ]);
-        $this->notificarComentarioEnVideo($idVideo, $request->usuario_id);
+        $this->notificarComentarioEnVideo($comentario->id, $request->usuario_id);
         return response()->json($comentario, 201);
     }
-
     public function responderComentario(Request $request, $idComentario)
     {
         $this->validarComentario($request);
@@ -147,20 +145,20 @@ class ComentarioController extends Controller
     {
         $this->validarUsuarioId($request);
         $comentario = Comentario::with('video')->find($idComentario);
-        if (!$comentario) {
+        if (! $comentario) {
             return $this->respuestaError('El comentario no existe.', 404);
         }
-    
+
         $esAutorComentario = $comentario->usuario_id === $request->usuario_id;
-    
+
         $esDuenoVideo = $comentario->video && $comentario->video->usuario_id === $request->usuario_id;
-    
-        if (!$esAutorComentario && !$esDuenoVideo) {
+
+        if (! $esAutorComentario && ! $esDuenoVideo) {
             return $this->respuestaError('No tienes permiso para eliminar este comentario.', 403);
         }
-    
+
         $comentario->delete();
-    
+
         return $this->respuestaExito('Comentario dado de baja correctamente.');
     }
 

@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Comentario;
 use App\Models\Notificacion;
 use App\Models\User;
 use App\Models\Video;
@@ -210,46 +211,63 @@ class NotificacionController extends Controller
             'total_notificaciones' => $notificaciones->count(),
         ], 200);
     }
-    
+
     private function formatearNotificacion($notificacion)
     {
         $host   = $this->obtenerHostMinio();
         $bucket = $this->obtenerBucket();
-
         $data = [
-            'id'                  => $notificacion->id,
-            'mensaje'             => $notificacion->mensaje,
-            'referencia_id'       => $notificacion->referencia_id,
-            'referencia_tipo'     => $notificacion->referencia_tipo,
-            'fecha_creacion'      => $notificacion->created_at->format('Y-m-d H:i:s'),
-            'leido'               => $notificacion->pivot->leido,
-            'foto_perfil_subidor' => null,
-            'miniatura_video'     => null,
-            'nombre_subidor'      => null,
+            'id'              => $notificacion->id,
+            'mensaje'         => $notificacion->mensaje,
+            'referencia_id'   => $notificacion->referencia_id,
+            'referencia_tipo' => $notificacion->referencia_tipo,
+            'fecha_creacion'  => $notificacion->created_at->format('Y-m-d H:i:s'),
+            'leido'           => $notificacion->pivot->leido,
+            'titulo_video'    => null,
+            'miniatura_video' => null,
+            'id_video'        => null,
         ];
 
-        // Carga la información del video y usuario solo si es una notificación de video subido
         if ($notificacion->referencia_tipo === 'new_video') {
-            // Carga el Video y sus relaciones anidadas (Canal y Usuario)
+            $data['foto_perfil_subidor'] = null;
+            $data['nombre_subidor']      = null;
+
             $video = Video::with('canal.user')->find($notificacion->referencia_id);
 
             if ($video) {
                 if ($video->canal && $video->canal->user) {
-                    $usuarioSubida = $video->canal->user;
-
-                    // Asumo que el campo de foto en el modelo User es 'foto'
+                    $usuarioSubida               = $video->canal->user;
                     $data['foto_perfil_subidor'] = $this->obtenerUrlArchivo($usuarioSubida->foto, $host, $bucket);
                     $data['nombre_subidor']      = $usuarioSubida->name;
                 }
-
-                // Asumo que el campo de miniatura en el modelo Video es 'miniatura'
+                $data['titulo_video']    = $video->titulo;
                 $data['miniatura_video'] = $this->obtenerUrlArchivo($video->miniatura, $host, $bucket);
+                $data['id_video']        = $video->id;
+            }
+        }
+        elseif ($notificacion->referencia_tipo === 'new_comment' || $notificacion->referencia_tipo === 'new_reply') {
+            $data['texto_comentario']       = null;
+            $data['foto_perfil_comentador'] = null;
+            $data['nombre_comentador']      = null;
+            $comentario = Comentario::with(['video', 'user'])->find($notificacion->referencia_id);
+
+            if ($comentario) {
+                $data['texto_comentario'] = $comentario->mensaje;
+                if ($comentario->user) {
+                    $data['nombre_comentador']      = $comentario->user->name;
+                    $data['foto_perfil_comentador'] = $this->obtenerUrlArchivo($comentario->user->foto, $host, $bucket);
+                }
+                $video = $comentario->video;
+                if ($video) {
+                    $data['titulo_video']    = $video->titulo;
+                    $data['miniatura_video'] = $this->obtenerUrlArchivo($video->miniatura, $host, $bucket);
+                    $data['id_video']        = $video->id;
+                }
             }
         }
 
         return $data;
     }
-
     public function borrarNotificacion(int $notificacionId, int $usuarioId)
     {
         $notificacion = $this->obtenerNotificacion($notificacionId);
@@ -291,15 +309,16 @@ class NotificacionController extends Controller
     {
         $usuario->notificaciones()->detach();
     }
-    public function crearNotificacionDeComentarioEnVideo(int $videoId, int $usuarioIdComentario)
+    public function crearNotificacionDeComentarioEnVideo(int $comentarioId, int $usuarioIdComentario)
     {
-        $video              = Video::with('canal.user')->findOrFail($videoId);
+        $comentario         = Comentario::with('video.canal.user')->findOrFail($comentarioId);
+        $video              = $comentario->video;
         $usuarioPropietario = $video->canal->user;
         if ($this->esComentarioPropio($usuarioPropietario->id, $usuarioIdComentario)) {
             return $this->respuestaError('El propietario no recibe notificación de su propio comentario.', 200);
         }
-        $mensaje      = $this->crearMensajeNotificacionComentario($usuarioIdComentario, $video);
-        $notificacion = $this->crearNotificacion($videoId, $mensaje, 'new_comment');
+        $mensaje = $this->crearMensajeNotificacionComentario($usuarioIdComentario, $video);
+        $notificacion = $this->crearNotificacion($comentarioId, $mensaje, 'new_comment');
         $this->asociarNotificacionAUsuario($usuarioPropietario, $notificacion);
         return $this->respuestaExito('Notificación creada exitosamente.', $notificacion);
     }
@@ -314,17 +333,19 @@ class NotificacionController extends Controller
         $usuario->notificaciones()->attach($notificacion->id, ['leido' => false]);
     }
 
-    public function crearNotificacionDeRespuestaComentario(int $usuarioIdComentario, int $usuarioIdRespondedor, int $videoId)
+    public function crearNotificacionDeRespuestaComentario(int $comentarioOriginalId, int $usuarioIdRespondedor, int $videoId)
     {
-        $video              = Video::findOrFail($videoId);
-        $usuarioComentario  = User::findOrFail($usuarioIdComentario);
+        $comentarioOriginal = Comentario::findOrFail($comentarioOriginalId);
+        $usuarioComentario  = $comentarioOriginal->user;
         $usuarioRespondedor = User::findOrFail($usuarioIdRespondedor);
-
+        $video              = Video::findOrFail($videoId);
         if ($this->esRespuestaPropia($usuarioComentario->id, $usuarioRespondedor->id)) {
             return $this->respuestaError('El usuario no recibe notificación de su propia respuesta.', 200);
         }
-        $mensaje      = $this->crearMensajeNotificacionRespuesta($usuarioIdComentario, $usuarioIdRespondedor, $video);
-        $notificacion = $this->crearNotificacion($videoId, $mensaje, 'new_reply');
+
+        $mensaje = $this->crearMensajeNotificacionRespuesta($usuarioComentario->id, $usuarioIdRespondedor, $video);
+        $notificacion = $this->crearNotificacion($comentarioOriginalId, $mensaje, 'new_reply');
+
         $this->asociarNotificacionAUsuario($usuarioComentario, $notificacion);
         return $this->respuestaNotificacionDeRespuestaCreada('Notificación creada exitosamente.', $notificacion, $usuarioComentario);
     }
