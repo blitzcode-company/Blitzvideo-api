@@ -9,6 +9,30 @@ use Illuminate\Http\Request;
 class NotificacionController extends Controller
 {
 
+    private function obtenerHostMinio()
+    {
+        return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+    }
+
+    private function obtenerBucket()
+    {
+        return env('AWS_BUCKET') . '/';
+    }
+
+    private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
+    {
+        if (! $rutaRelativa) {
+            return null;
+        }
+        if (str_starts_with($rutaRelativa, $host . $bucket)) {
+            return $rutaRelativa;
+        }
+        if (filter_var($rutaRelativa, FILTER_VALIDATE_URL)) {
+            return $rutaRelativa;
+        }
+        return $host . $bucket . $rutaRelativa;
+    }
+
     private function crearNotificacion(int $referencia_id, $mensaje, $referencia_tipo)
     {
         return Notificacion::create([
@@ -130,7 +154,6 @@ class NotificacionController extends Controller
     {
         $usuario->notificaciones()->updateExistingPivot($notificacionId, ['leido' => true]);
     }
-
     private function respuestaError(string $mensaje, int $codigo)
     {
         return response()->json(['error' => $mensaje], $codigo);
@@ -139,7 +162,7 @@ class NotificacionController extends Controller
     private function respuestaExito(string $mensaje, $notificacion)
     {
         return response()->json([
-            'success'      => true, 
+            'success'      => true,
             'message'      => $mensaje,
             'notificacion' => $notificacion,
         ], 201);
@@ -187,17 +210,44 @@ class NotificacionController extends Controller
             'total_notificaciones' => $notificaciones->count(),
         ], 200);
     }
-
+    
     private function formatearNotificacion($notificacion)
     {
-        return [
-            'id'              => $notificacion->id,
-            'mensaje'         => $notificacion->mensaje,
-            'referencia_id'   => $notificacion->referencia_id,
-            'referencia_tipo' => $notificacion->referencia_tipo,
-            'fecha_creacion'  => $notificacion->created_at->format('Y-m-d H:i:s'),
-            'leido'           => $notificacion->pivot->leido,
+        $host   = $this->obtenerHostMinio();
+        $bucket = $this->obtenerBucket();
+
+        $data = [
+            'id'                  => $notificacion->id,
+            'mensaje'             => $notificacion->mensaje,
+            'referencia_id'       => $notificacion->referencia_id,
+            'referencia_tipo'     => $notificacion->referencia_tipo,
+            'fecha_creacion'      => $notificacion->created_at->format('Y-m-d H:i:s'),
+            'leido'               => $notificacion->pivot->leido,
+            'foto_perfil_subidor' => null,
+            'miniatura_video'     => null,
+            'nombre_subidor'      => null,
         ];
+
+        // Carga la información del video y usuario solo si es una notificación de video subido
+        if ($notificacion->referencia_tipo === 'new_video') {
+            // Carga el Video y sus relaciones anidadas (Canal y Usuario)
+            $video = Video::with('canal.user')->find($notificacion->referencia_id);
+
+            if ($video) {
+                if ($video->canal && $video->canal->user) {
+                    $usuarioSubida = $video->canal->user;
+
+                    // Asumo que el campo de foto en el modelo User es 'foto'
+                    $data['foto_perfil_subidor'] = $this->obtenerUrlArchivo($usuarioSubida->foto, $host, $bucket);
+                    $data['nombre_subidor']      = $usuarioSubida->name;
+                }
+
+                // Asumo que el campo de miniatura en el modelo Video es 'miniatura'
+                $data['miniatura_video'] = $this->obtenerUrlArchivo($video->miniatura, $host, $bucket);
+            }
+        }
+
+        return $data;
     }
 
     public function borrarNotificacion(int $notificacionId, int $usuarioId)
