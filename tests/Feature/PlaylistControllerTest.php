@@ -173,7 +173,6 @@ class PlaylistControllerTest extends TestCase
                     'user_id',
                     'created_at',
                     'updated_at',
-                    'deleted_at',
                 ],
                 'videos'   => [
                     '*' => [
@@ -188,7 +187,6 @@ class PlaylistControllerTest extends TestCase
                         'acceso',
                         'created_at',
                         'updated_at',
-                        'deleted_at',
                         'pivot',
                     ],
                 ],
