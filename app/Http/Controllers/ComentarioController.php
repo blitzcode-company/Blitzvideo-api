@@ -83,7 +83,14 @@ class ComentarioController extends Controller
     public function responderComentario(Request $request, $idComentario)
     {
         $this->validarComentario($request);
-        $comentarioPadre = Comentario::findOrFail($idComentario);
+        $comentarioPadre = Comentario::find($idComentario);
+
+        if (!$comentarioPadre) {
+            return response()->json([
+                'error' => 'El comentario padre no existe.'
+            ], 400);
+        }
+
         $comentario      = $this->guardarComentario($request, [
             'video_id'     => $comentarioPadre->video_id,
             'respuesta_id' => $comentarioPadre->id,
@@ -135,7 +142,7 @@ class ComentarioController extends Controller
     {
         $notificacionController = new NotificacionController();
         $notificacionController->crearNotificacionDeRespuestaComentario(
-            $comentarioPadre->usuario_id,
+            $comentarioPadre->id,
             $comentario->usuario_id,
             $comentarioPadre->video_id
         );
