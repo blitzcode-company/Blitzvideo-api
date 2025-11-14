@@ -333,7 +333,7 @@ class NotificacionController extends Controller
         $usuario->notificaciones()->attach($notificacion->id, ['leido' => false]);
     }
 
-    public function crearNotificacionDeRespuestaComentario(int $comentarioOriginalId, int $usuarioIdRespondedor, int $videoId)
+    public function crearNotificacionDeRespuestaComentario(int $comentarioOriginalId, int $usuarioIdRespondedor,int $nuevaRespuestaId, int $videoId)
     {
         $comentarioOriginal = Comentario::findOrFail($comentarioOriginalId);
         $usuarioComentario  = $comentarioOriginal->user;
@@ -344,7 +344,7 @@ class NotificacionController extends Controller
         }
 
         $mensaje = $this->crearMensajeNotificacionRespuesta($usuarioComentario->id, $usuarioIdRespondedor, $video);
-        $notificacion = $this->crearNotificacion($comentarioOriginalId, $mensaje, 'new_reply');
+        $notificacion = $this->crearNotificacion($nuevaRespuestaId, $mensaje, 'new_reply');
 
         $this->asociarNotificacionAUsuario($usuarioComentario, $notificacion);
         return $this->respuestaNotificacionDeRespuestaCreada('Notificación creada exitosamente.', $notificacion, $usuarioComentario);

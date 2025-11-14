@@ -264,11 +264,18 @@ class NotificacionControllerTest extends TestCase
             'mensaje' => 'Buen video!'
         ]);
 
+    $respuesta = Comentario::create([
+        'usuario_id'   => $usuarioRespondedor->id,
+        'video_id'     => $video->id,
+        'respuesta_id' => $comentario->id, 
+        'mensaje'      => 'Totalmente de acuerdo!'
+    ]);
+
         $this->assertNotNull($usuarioComentario, 'Usuario que comenta no encontrado');
         $this->assertNotNull($usuarioRespondedor, 'Usuario respondedor no encontrado');
         $this->assertNotNull($video, 'Video no encontrado');
         $controller = new NotificacionController();
-        $response = $controller->crearNotificacionDeRespuestaComentario($comentario->id, $usuarioRespondedor->id, $video->id);
+        $response = $controller->crearNotificacionDeRespuestaComentario($comentario->id, $usuarioRespondedor->id, $respuesta->id, $video->id);
         $this->assertInstanceOf(JsonResponse::class, $response);
         $this->assertEquals(201, $response->getStatusCode());
         $responseData = json_decode($response->getContent(), true);
@@ -277,7 +284,7 @@ class NotificacionControllerTest extends TestCase
         $this->assertArrayHasKey('notificacion', $responseData);
         $this->assertArrayHasKey('usuario', $responseData);
         $this->assertDatabaseHas('notificacion', [
-            'referencia_id' => $comentario->id,
+            'referencia_id' => $respuesta->id,
             'referencia_tipo' => 'new_reply',
             'mensaje' => $usuarioRespondedor->name . " ha respondido a tu comentario en el video: " . $video->titulo,
         ]);

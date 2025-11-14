@@ -138,14 +138,16 @@ class ComentarioController extends Controller
         $notificacionController->crearNotificacionDeComentarioEnVideo($idVideo, $usuarioId);
     }
 
-    private function notificarRespuestaComentario($comentarioPadre, $comentario)
+    private function notificarRespuestaComentario($comentarioPadre, $nuevaRespuesta)
     {
         $notificacionController = new NotificacionController();
+
         $notificacionController->crearNotificacionDeRespuestaComentario(
-            $comentarioPadre->id,
-            $comentario->usuario_id,
+            $comentarioPadre->id,       
+            $nuevaRespuesta->usuario_id, 
+            $nuevaRespuesta->id,         
             $comentarioPadre->video_id
-        );
+    );
     }
 
     public function bajaLogicaComentario(Request $request, $idComentario)
