@@ -46,6 +46,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
         Route::get('/{idVideo}/puntuaciones', [PuntuaController::class, 'listarPuntuaciones']);
         Route::get('/usuario/{userId}/puntuaciones', [PuntuaController::class, 'listarPuntuacionesPorUsuario']);
+        Route::get('/{idEtiqueta}/videos', [VideoController::class, 'listarVideosPorEtiqueta']);
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);
@@ -60,8 +61,6 @@ Route::prefix('v1')->group(function () {
     Route::prefix('etiquetas')->group(function () {
         Route::get('/', [EtiquetaController::class, 'listarEtiquetas']);
         Route::get('/popular', [EtiquetaController::class, 'listarEtiquetasMasPopulares']);
-
-        Route::get('/{idEtiqueta}/videos', [EtiquetaController::class, 'listarVideosPorEtiqueta']);
         Route::get('/{etiquetaId}/canal/{canalId}/videos', [EtiquetaController::class, 'filtrarVideosPorEtiquetaYCanal']);
     });
     Route::prefix('playlists')->group(function () {

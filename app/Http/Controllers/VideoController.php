@@ -451,6 +451,14 @@ class VideoController extends Controller
             ->each(fn($video) => $video->promedio_puntuaciones = $video->puntuacion_promedio);
     }
 
+    public function listarVideosPorEtiqueta($etiquetaId)
+    {
+        $etiquetas = collect([$etiquetaId]);
+        $videos    = $this->obtenerVideosPorEtiquetas($etiquetas);
+        $this->ajustarRutasDeVideos($videos);
+        return response()->json($videos, 200);
+    }
+
     public function mostrarPublicidad()
     {
         $publicidadSeleccionada = $this->seleccionarPublicidad();
