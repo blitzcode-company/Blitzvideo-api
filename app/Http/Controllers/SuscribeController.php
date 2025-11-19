@@ -7,6 +7,36 @@ use Illuminate\Http\Request;
 
 class SuscribeController extends Controller
 {
+
+    private function generarUrlSiExiste($rutaRelativa, $host, $bucket)
+    {
+        return $rutaRelativa ? $this->obtenerUrlArchivo($rutaRelativa, $host, $bucket) : null;
+    }
+
+    private function obtenerHostMinio()
+    {
+        return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+    }
+
+    private function obtenerBucket()
+    {
+        return env('AWS_BUCKET') . '/';
+    }
+
+    private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
+    {
+        if (! $rutaRelativa) {
+            return null;
+        }
+        if (str_starts_with($rutaRelativa, $host . $bucket)) {
+            return $rutaRelativa;
+        }
+        if (filter_var($rutaRelativa, FILTER_VALIDATE_URL)) {
+            return $rutaRelativa;
+        }
+        return $host . $bucket . $rutaRelativa;
+    }
+
     public function suscribirse(Request $request, $canal_id)
     {
         $this->validarUsuario($request);
@@ -65,6 +95,9 @@ class SuscribeController extends Controller
 
     public function listarSuscripcionesUsuario($user_id)
     {
+        $host   = $this->obtenerHostMinio();
+        $bucket = $this->obtenerBucket();
+
         $suscripciones = Suscribe::where('user_id', $user_id)
             ->with([
                 'canal.user:id,foto',
@@ -75,15 +108,22 @@ class SuscribeController extends Controller
             return response()->json(['message' => 'Este usuario no tiene suscripciones.'], 404);
         }
 
+        foreach ($suscripciones as $suscripcion) {
+            $user = $suscripcion->canal->user ?? null;
+
+            if ($user && $user->foto) {
+                $user->foto = $this->generarUrlSiExiste($user->foto, $host, $bucket);
+            }
+        }
+
         $resultado = $suscripciones->map(fn($suscripcion) => [
             'id'           => $suscripcion->canal->id,
             'nombre'       => $suscripcion->canal->nombre,
             'descripcion'  => $suscripcion->canal->descripcion,
             'portada'      => $suscripcion->canal->portada,
             'user'         => $suscripcion->canal->user,
-            'canal_online' => $suscripcion->canal->streams ? (bool) $suscripcion->canal->streams->activo : false,
+            'canal_online' => optional($suscripcion->canal->streams)->activo ? true : false,
         ]);
-
         return response()->json($resultado, 200);
     }
 

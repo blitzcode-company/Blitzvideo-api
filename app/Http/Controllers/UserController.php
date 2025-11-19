@@ -25,12 +25,6 @@ class UserController extends Controller
         return $rutaRelativa ? $this->obtenerUrlArchivo($rutaRelativa, $host, $bucket) : null;
     }
 
-    public function mostrarUsuarioPorId($id)
-    {
-        $usuario = User::with('canales')->findOrFail($id);
-        return response()->json($usuario, 200);
-    }
-
     private function obtenerHostMinio()
     {
         return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
@@ -53,6 +47,12 @@ class UserController extends Controller
             return $rutaRelativa;
         }
         return $host . $bucket . $rutaRelativa;
+    }
+
+    public function mostrarUsuarioPorId($id)
+    {
+        $usuario = User::with('canales')->findOrFail($id);
+        return response()->json($usuario, 200);
     }
 
     public function darDeBajaUsuario($userId)
@@ -98,11 +98,11 @@ class UserController extends Controller
     private function guardarFotoEnS3($foto, $userId)
     {
         $folderPath = 'perfil/' . $userId;
-        $path = $foto->store($folderPath, 's3'); 
-    
-        $host = str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+        $path       = $foto->store($folderPath, 's3');
+
+        $host   = str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
         $bucket = env('AWS_BUCKET') . '/';
-    
+
         return $host . $bucket . $path;
     }
 }
