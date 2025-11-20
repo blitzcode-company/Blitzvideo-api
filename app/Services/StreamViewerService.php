@@ -8,18 +8,11 @@ use App\Models\Canal;
 
 class StreamViewerService
 {
-    private function getStreamIdFromKey(string $streamKey)
+ public function añadirViewer(int $streamId)
     {
-        $canal = Canal::where('stream_key', $streamKey)->first();
-        return $canal?->streamActual()?->id; 
-    }
-    
-   public function añadirViewer(string $streamKey)
-    {
-        $streamId = $this->getStreamIdFromKey($streamKey);
-        if (! $streamId) return 0;
+        $key = "stream:{$streamId}:viewers";
 
-        $count = Redis::incr("stream:{$streamId}:viewers");
+        $count = Redis::incr($key);
 
         broadcast(new EventoStream($streamId, [
             'type' => 'viewer_count',
@@ -29,17 +22,15 @@ class StreamViewerService
         return $count;
     }
 
-
-     public function eliminarViewer(string $streamKey)
+    public function eliminarViewer(int $streamId)
     {
-        $streamId = $this->getStreamIdFromKey($streamKey);
-        if (! $streamId) return 0;
+        $key = "stream:{$streamId}:viewers";
 
-        $count = Redis::decr("stream:{$streamId}:viewers");
+        $count = Redis::decr($key);
 
         if ($count < 0) {
             $count = 0;
-            Redis::set("stream:{$streamId}:viewers", 0);
+            Redis::set($key, 0);
         }
 
         broadcast(new EventoStream($streamId, [
@@ -50,11 +41,8 @@ class StreamViewerService
         return $count;
     }
 
-    public function getCount(string $streamKey)
+    public function getCount(int $streamId)
     {
-        $streamId = $this->getStreamIdFromKey($streamKey);
-        if (! $streamId) return 0;
-
         return (int) Redis::get("stream:{$streamId}:viewers") ?? 0;
     }
 }

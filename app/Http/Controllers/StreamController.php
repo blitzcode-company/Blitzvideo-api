@@ -634,7 +634,7 @@ public function metricsHls($key)
     public function entrarView(Request $request, $streamId)
     {
         $service = new StreamViewerService();
-        $count = $service->añadirViewer($streamId);
+        $count = $service->añadirViewer((int)$streamId);
 
         return response()->json([
             'ok' => true,
@@ -645,7 +645,8 @@ public function metricsHls($key)
     public function salirView(Request $request, $streamId)
     {
         $service = new StreamViewerService();
-        $count = $service->eliminarViewer($streamId);
+        $count = $service->eliminarViewer((int)$streamId);
+
 
         return response()->json([
             'ok' => true,
