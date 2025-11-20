@@ -20,6 +20,7 @@ class ComentarioController extends Controller
     {
         return Comentario::with(['user:id,name,foto', 'likes', 'video.canal.user:id'])
             ->where('video_id', $idVideo)
+               ->whereNull('deleted_at') 
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(fn($comentario) => $this->agregarEstadoMeGusta($comentario, $userId));
@@ -154,7 +155,7 @@ class ComentarioController extends Controller
     {
         $this->validarUsuarioId($request);
         $comentario = Comentario::with('video')->find($idComentario);
-        if (! $comentario) {
+        if (!$comentario) {
             return $this->respuestaError('El comentario no existe.', 404);
         }
 

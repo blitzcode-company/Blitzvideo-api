@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Stream;
 
 class Canal extends Model
 {
@@ -31,6 +32,12 @@ class Canal extends Model
                     ->withTrashed();
     }
 
+    public function streamActual()
+    {
+        return $this->hasOne(Stream::class, 'canal_id')
+            ->where('activo', true)
+            ->latest('id');
+    }
     public function streams()
     {
         return $this->hasOne(Stream::class);

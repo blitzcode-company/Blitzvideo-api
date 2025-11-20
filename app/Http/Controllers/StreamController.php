@@ -10,16 +10,29 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Http;
+use App\Events\EventoStream;
+use App\Services\StreamViewerService;
 
 class StreamController extends Controller
 {
     public function mostrarTodasLasTransmisiones()
     {
-        $transmisiones = Stream::with('canal:id,nombre')->get();
-        $host          = $this->obtenerHostMinio();
-        $bucket        = $this->obtenerBucket();
-        $transmisiones->each(fn($transmision) => $this->procesarMiniaturaTransmision($transmision, $host, $bucket));
-        return response()->json($transmisiones, 200);
+        $transmisiones = Stream::with('canal:id,nombre,stream_key')->get();
+
+        $transmisiones = $transmisiones->map(function ($transmision) {
+            $key = "live/{$transmision->canal->stream_key}";
+            $viewers = (int) Redis::get("viewers:{$key}") ?: 0;
+            $transmision->viewers = $viewers;
+            return $transmision;
+        });
+
+        $host = $this->obtenerHostMinio();
+        $bucket = $this->obtenerBucket();
+        $transmisiones->each(fn($t) => $this->procesarMiniaturaTransmision($t, $host, $bucket));
+
+        return response()->json($transmisiones);
     }
 
     public function verTransmision($transmisionId)
@@ -35,6 +48,176 @@ class StreamController extends Controller
             'url_hls'     => $urlHls,
         ], 200, [], JSON_UNESCAPED_SLASHES);
     }
+
+    public function hlsEvent(Request $request)
+    {
+        $event = $request->input('call');       
+        $name  = $request->input('name');       
+        $addr  = $request->input('addr', $request->ip());
+
+        if (!$name || !in_array($event, ['on_play', 'on_play_done'])) {
+            return response('bad request', 400);
+        }
+
+        $streamKey = "live/{$name}";
+        $redisKey  = "viewers:{$streamKey}";
+        $setKey    = "viewers:set:{$streamKey}";
+
+        if ($event === 'on_play') {
+            $added = Redis::sadd($setKey, $addr);
+
+            if ($added) {
+                $current = Redis::incr($redisKey);
+
+                if ($current == 1) {
+                    Redis::setex("stream:active:{$name}", 3600, now()->toDateTimeString());
+                }
+            }
+
+            Redis::expire($redisKey, 300);
+            Redis::expire($setKey, 300);
+        }
+
+        if ($event === 'on_play_done') {
+            $removed = Redis::srem($setKey, $addr);
+
+            if ($removed) {
+                $current = Redis::decr($redisKey);
+            }
+
+            if (($current ?? 0) <= 0) {
+                Redis::del($redisKey, $setKey);
+            }
+        }
+
+        return response()->json([
+            'stream'   => $name,
+            'viewers'  => max(0, Redis::get($redisKey) ?? 0),
+            'event'    => $event,
+            'ip'       => $addr,
+        ]);
+    }
+
+    public function status($key)
+    {
+        $base = '/mnt/hls/' . $key;
+
+        $playlist = $base . '/index.m3u8';
+
+        if (!file_exists($playlist)) {
+            return response()->json([
+                'online' => false,
+                'message' => 'Stream not found or offline'
+            ]);
+        }
+
+        $content = file_get_contents($playlist);
+
+        preg_match_all('/(\d+)\.ts/', $content, $matches);
+
+        if (empty($matches[1])) {
+            return response()->json([
+                'online' => true,
+                'bitrate' => null,
+                'segments' => 0,
+                'message' => 'Waiting for segments...'
+            ]);
+        }
+
+        $lastSegment = max($matches[1]);
+        $segmentPath = $base . '/' . $lastSegment . '.ts';
+
+        $fileSizeBytes = file_exists($segmentPath) ? filesize($segmentPath) : 0;
+        $duration = 3; 
+
+        $bitrateKbps = $duration > 0
+            ? round(($fileSizeBytes * 8 / 1024) / $duration)
+            : null;
+
+        return response()->json([
+            'online' => true,
+            'segments' => count($matches[1]),
+            'current_segment' => $lastSegment,
+            'bitrate_kbps' => $bitrateKbps,
+            'playlist' => "/hls/{$key}/index.m3u8",
+        ]);
+    }
+
+
+public function metricsHls($key)
+{
+    $base = "/mnt/hls/{$key}";
+    $playlistPath = "{$base}/index.m3u8";
+
+    if (!file_exists($playlistPath)) {
+        return response()->json([
+            'online' => false,
+            'message' => 'Stream offline'
+        ]);
+    }
+
+    $content = file_get_contents($playlistPath);
+
+    preg_match_all('/(.*\.ts)/', $content, $matches);
+
+    if (empty($matches[1])) {
+        return response()->json([
+            'online' => true,
+            'segments' => 0,
+            'message' => 'Waiting for segments...'
+        ]);
+    }
+
+    $segments = $matches[1];
+    $lastSegment = end($segments);
+    $segmentPath = "{$base}/{$lastSegment}";
+
+    $size = filesize($segmentPath);
+    $durationSec = 3; 
+    $bitrateKbps = round(($size * 8 / 1024) / $durationSec);
+
+    $ffprobe = "ffprobe -v quiet -print_format json -show_streams \"$segmentPath\"";
+    $metaJson = shell_exec($ffprobe);
+    $meta = json_decode($metaJson, true);
+
+    $videoStream = collect($meta['streams'])->firstWhere('codec_type', 'video');
+
+    $width = $videoStream['width'] ?? null;
+    $height = $videoStream['height'] ?? null;
+    $fps = null;
+
+    if (isset($videoStream['r_frame_rate'])) {
+        list($num, $den) = explode('/', $videoStream['r_frame_rate']);
+        $fps = round($num / $den);
+    }
+
+    $latencySeconds = count($segments) * $durationSec;
+
+    $playlistAgeSeconds = time() - filemtime($playlistPath);
+
+    return response()->json([
+        'online'            => true,
+        'segments'          => count($segments),
+        'current_segment'   => $lastSegment,
+        'bitrate_kbps'      => $bitrateKbps,
+        'resolution'        => "{$width}x{$height}",
+        'fps'               => $fps,
+        'latency_seconds'   => $latencySeconds,
+        'playlist_age'      => $playlistAgeSeconds,
+        'playlist'          => "/hls/{$key}/index.m3u8",
+    ]);
+}
+
+
+    public function obtenerViewers($stream_key)
+    {
+        $redisKey = "viewers:live/{$stream_key}";
+        $viewers  = (int) Redis::get($redisKey) ?: 0;
+
+        return response()->json(['viewers' => $viewers]);
+    }
+
+
 
     private function obtenerTransmisionConRelaciones($transmisionId)
     {
@@ -53,9 +236,15 @@ class StreamController extends Controller
 
     private function generarUrlHls($transmision)
     {
-        return $transmision->activo
-        ? sprintf('%s%s.m3u8', env('STREAM_BASE_LINK'), $transmision->canal->stream_key)
-        : null;
+        if (!$transmision->activo) {
+            return null;
+        }
+
+        return sprintf(
+            '%s%s/index.m3u8',
+            rtrim(env('STREAM_BASE_LINK'), '/').'/',
+            $transmision->canal->stream_key
+        );
     }
 
     private function procesarMiniaturaTransmision($transmision, $host, $bucket)
@@ -442,6 +631,28 @@ class StreamController extends Controller
             ->first() ?? throw new \Exception("No se encontró ningún archivo FLV para la stream key: {$streamKey}");
     }
 
+    public function entrarView(Request $request, $streamId)
+    {
+        $service = new StreamViewerService();
+        $count = $service->añadirViewer($streamId);
+
+        return response()->json([
+            'ok' => true,
+            'viewers' => $count
+        ]);
+    }
+
+    public function salirView(Request $request, $streamId)
+    {
+        $service = new StreamViewerService();
+        $count = $service->eliminarViewer($streamId);
+
+        return response()->json([
+            'ok' => true,
+            'viewers' => $count
+        ]);
+    }
+
     public function iniciarStream(Request $request)
     {
         return $this->gestionarEstadoStream($request, 'iniciar', true);
@@ -473,7 +684,22 @@ class StreamController extends Controller
                 : 'No hay transmisiones activas para finalizar',
             ], 400);
         }
+
         $transmision->update(['activo' => $estado]);
+
+       if ($estado === true) {
+        broadcast(new EventoStream($transmision->id, [
+            'type' => 'stream_started',
+            'stream_id' => $transmision->id,
+            'started_at' => now()->toISOString(),
+        ]));
+        } else {
+        broadcast(new EventoStream($transmision->id, [
+            'type' => 'stream_finished',
+            'stream_id' => $transmision->id,
+            'ended_at' => now()->toISOString(),
+        ]));
+        }
 
         return response()->json([
             'message'        => $estado ? 'Stream iniciado' : 'Stream finalizado',
