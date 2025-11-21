@@ -86,6 +86,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{key}/status', [StreamController::class, 'status']);
         Route::post('/{id}/entrar', [StreamController::class, 'entrarView']);
         Route::post('/{id}/salir', [StreamController::class, 'salirView']);
+        Route::get('/{streamId}/heartbeat', [StreamController::class, 'heartbeat']);
 
         Route::get('/chat/mensajes/{streamId}', [ChatStreamController::class, 'obtenerMensajes']);
 

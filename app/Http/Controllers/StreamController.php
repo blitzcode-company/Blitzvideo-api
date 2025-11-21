@@ -22,11 +22,15 @@ class StreamController extends Controller
         $transmisiones = Stream::with('canal:id,nombre,stream_key')->get();
 
         $transmisiones = $transmisiones->map(function ($transmision) {
-            $key = "live/{$transmision->canal->stream_key}";
-            $viewers = (int) Redis::get("viewers:{$key}") ?: 0;
-            $transmision->viewers = $viewers;
-            return $transmision;
-        });
+                
+                $pattern = "stream:{$transmision->id}:viewer:*";
+
+                $viewers = count(Redis::keys($pattern));
+
+                $transmision->viewers = $viewers;
+
+                return $transmision;
+            });
 
         $host = $this->obtenerHostMinio();
         $bucket = $this->obtenerBucket();
@@ -217,7 +221,20 @@ public function metricsHls($key)
         return response()->json(['viewers' => $viewers]);
     }
 
+    public function heartbeat(Request $request, $streamId)
+    {
+        $userId = $request->query('user_id');
 
+        $service = new StreamViewerService();
+        $count = $service->heartbeat($streamId, $userId);
+
+        broadcast(new EventoStream($streamId, [
+            'type' => 'viewer_count',
+            'count' => $count,
+        ]));
+
+        return response()->json(['ok' => true]);
+    }
 
     private function obtenerTransmisionConRelaciones($transmisionId)
     {

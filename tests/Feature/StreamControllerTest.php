@@ -48,6 +48,7 @@ class StreamControllerTest extends TestCase
                     'user_id',
 
                 ],
+                'viewers',
             ],
             'url_hls',
         ]);

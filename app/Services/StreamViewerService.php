@@ -8,7 +8,11 @@ use App\Models\Canal;
 
 class StreamViewerService
 {
- public function añadirViewer(int $streamId)
+
+    private $ttl = 10;
+
+    public function añadirViewer(int $streamId)
+
     {
         $key = "stream:{$streamId}:viewers";
 
@@ -41,11 +45,17 @@ class StreamViewerService
         return $count;
     }
 
-
-
-    
-    public function getCount(int $streamId)
+    public function heartbeat($streamId, $userId)
     {
-        return (int) Redis::get("stream:{$streamId}:viewers") ?? 0;
+        $key = "stream:{$streamId}:viewer:{$userId}";
+
+        Redis::setex($key, $this->ttl, true);
+
+        return $this->getCount($streamId);
+    }
+
+    public function getCount($streamId)
+    {
+        return count(Redis::keys("stream:{$streamId}:viewer:*"));
     }
 }
