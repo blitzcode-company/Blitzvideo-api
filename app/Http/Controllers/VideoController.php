@@ -142,7 +142,7 @@ class VideoController extends Controller
             return response()->json(['error' => 'No se proporcionó ningún archivo de video'], 400);
         }
         $canal     = Canal::findOrFail($canalId);
-        $videoData = $this->procesarVideo($request->file('video'), $canalId);
+        $videoData = $this->procesarVideo($request->file('video'), $request, $canalId);
         $video     = $this->crearNuevoVideo($request, $canal, $videoData);
 
         if ($request->has('etiquetas')) {
@@ -170,10 +170,22 @@ class VideoController extends Controller
         $request->validate($rules);
     }
 
-    private function procesarVideo($videoFile, $canalId)
+    private function procesarVideo($videoFile, $request, $canalId)
     {
-        $rutaVideo    = $this->guardarArchivo($videoFile, 'videos/' . $canalId);
-        $urlMiniatura = $this->generarMiniatura($videoFile, $canalId);
+        $rutaVideo = $this->guardarArchivo($videoFile, 'videos/' . $canalId);
+
+
+        if ($request->hasFile('miniatura')) {
+                $miniaturaFile = $request->file('miniatura');
+                if ($miniaturaFile->isValid()) {
+                    $urlMiniatura = $this->guardarArchivo($miniaturaFile, 'miniaturas/' . $canalId);
+                }
+            }
+
+        if (!isset($urlMiniatura)) {
+            $urlMiniatura = $this->generarMiniatura($videoFile, $canalId);
+        }
+
         $duracion     = $this->obtenerDuracionDeVideo($videoFile);
         return ['rutaVideo' => $rutaVideo, 'urlMiniatura' => $urlMiniatura, 'duracion' => $duracion];
     }
