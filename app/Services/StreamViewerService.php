@@ -41,6 +41,9 @@ class StreamViewerService
         return $count;
     }
 
+
+
+    
     public function getCount(int $streamId)
     {
         return (int) Redis::get("stream:{$streamId}:viewers") ?? 0;
