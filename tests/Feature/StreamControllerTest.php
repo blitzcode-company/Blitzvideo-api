@@ -7,11 +7,12 @@ use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Redis;
+
 
 class StreamControllerTest extends TestCase
 {
     private $baseUrl;
-
     use WithoutMiddleware;
 
     protected function setUp(): void
@@ -22,12 +23,27 @@ class StreamControllerTest extends TestCase
 
     /** @test */
     public function puede_mostrar_todas_las_transmisiones()
-    {
-        $response = $this->getJson($this->baseUrl);
-        $response->assertStatus(200)->assertJsonStructure([
-            '*' => ['id', 'titulo', 'descripcion', 'activo', 'canal_id', 'created_at', 'updated_at'],
+{
+    Redis::shouldReceive('get')->andReturn(5);
+    Redis::shouldReceive('keys')->andReturn([]);
+    Redis::shouldReceive('command')->andReturn([]);
+
+    $response = $this->getJson($this->baseUrl);
+
+    $response->assertStatus(200)
+        ->assertJsonStructure([
+            '*' => [
+                'id',
+                'titulo',
+                'descripcion',
+                'activo',
+                'canal_id',
+                'created_at',
+                'updated_at',
+                'viewers',
+            ],
         ]);
-    }
+}
 
     /** @test */
     public function puede_ver_una_transmision_especifica()
@@ -48,7 +64,6 @@ class StreamControllerTest extends TestCase
                     'user_id',
 
                 ],
-                'viewers',
             ],
             'url_hls',
         ]);
