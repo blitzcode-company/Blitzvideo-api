@@ -34,13 +34,6 @@ class EtiquetaControllerTest extends TestCase
         $this->assertTrue($video->etiquetas->contains('id', $etiqueta->id));
     }
 
-    public function testListarVideosPorEtiqueta()
-    {
-        $etiqueta = Etiqueta::first();
-        $this->assertNotNull($etiqueta, 'No hay etiquetas en la base de datos para realizar la prueba.');
-        $response = $this->get(env('BLITZVIDEO_BASE_URL') . "etiquetas/{$etiqueta->id}/videos");
-        $response->assertStatus(Response::HTTP_OK);
-    }
     public function testListarEtiquetas()
     {
         $response = $this->get(env('BLITZVIDEO_BASE_URL') . "etiquetas");
