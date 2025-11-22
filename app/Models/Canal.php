@@ -1,17 +1,16 @@
 <?php
-
 namespace App\Models;
 
+use App\Models\Stream;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Stream;
 
 class Canal extends Model
 {
     use SoftDeletes;
-    protected $table = 'canals';
+    protected $table    = 'canals';
     protected $fillable = [
-        'nombre', 'descripcion', 'portada', 'user_id','stream_key',
+        'nombre', 'descripcion', 'portada', 'user_id', 'stream_key',
     ];
 
     public function user()
@@ -27,19 +26,20 @@ class Canal extends Model
     public function suscriptores()
     {
         return $this->belongsToMany(User::class, 'suscribe')
-                    ->withPivot('notificaciones')
-                    ->withTimestamps()
-                    ->withTrashed();
+            ->withPivot('notificaciones')
+            ->withTimestamps()
+            ->withTrashed();
+    }
+
+    public function streams()
+    {
+        return $this->belongsToMany(Stream::class, 'canal_stream');
     }
 
     public function streamActual()
     {
-        return $this->hasOne(Stream::class, 'canal_id')
+        return $this->belongsToMany(Stream::class, 'canal_stream')
             ->where('activo', true)
             ->latest('id');
-    }
-    public function streams()
-    {
-        return $this->hasOne(Stream::class);
     }
 }
