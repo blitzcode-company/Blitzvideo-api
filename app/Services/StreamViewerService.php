@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Events\EventoStream;
+use App\Events\ViewerStream;
 use Illuminate\Support\Facades\Redis;
 use App\Models\Canal;
 
@@ -18,7 +18,7 @@ class StreamViewerService
 
         $count = Redis::incr($key);
 
-        broadcast(new EventoStream($streamId, [
+        broadcast(new ViewerStream($streamId, [
             'type' => 'viewer_count',
             'count' => $count
         ]));
@@ -37,7 +37,7 @@ class StreamViewerService
             Redis::set($key, 0);
         }
 
-        broadcast(new EventoStream($streamId, [
+        broadcast(new ViewerStream($streamId, [
             'type' => 'viewer_count',
             'count' => $count
         ]));

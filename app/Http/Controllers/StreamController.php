@@ -12,7 +12,7 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Http;
-use App\Events\EventoStream;
+use App\Events\ViewerStream;
 use App\Services\StreamViewerService;
 
 class StreamController extends Controller
@@ -228,7 +228,7 @@ public function metricsHls($key)
         $service = new StreamViewerService();
         $count = $service->heartbeat($streamId, $userId);
 
-        broadcast(new EventoStream($streamId, [
+        broadcast(new ViewerStream($streamId, [
             'type' => 'viewer_count',
             'count' => $count,
         ]));
@@ -706,13 +706,13 @@ public function metricsHls($key)
         $transmision->update(['activo' => $estado]);
 
        if ($estado === true) {
-        broadcast(new EventoStream($transmision->id, [
+        broadcast(new ViewerStream($transmision->id, [
             'type' => 'stream_started',
             'stream_id' => $transmision->id,
             'started_at' => now()->toISOString(),
         ]));
         } else {
-        broadcast(new EventoStream($transmision->id, [
+        broadcast(new ViewerStream($transmision->id, [
             'type' => 'stream_finished',
             'stream_id' => $transmision->id,
             'ended_at' => now()->toISOString(),
