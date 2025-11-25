@@ -17,6 +17,7 @@ class Video extends Model
         'duracion',
         'bloqueado',
         'acceso',
+        'estado',
     ];
 
     public function canal()

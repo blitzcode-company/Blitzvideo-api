@@ -257,6 +257,7 @@ class StreamController extends Controller
             'duracion'    => 0,
             'canal_id'    => $canal->id,
             'acceso'      => 'publico',
+            'estado'      => 'PROGRAMADO',
         ]);
         $video->save();
 
@@ -412,323 +413,326 @@ class StreamController extends Controller
         ], 200, [], JSON_UNESCAPED_SLASHES);
     }
 
-public function iniciarStream(Request $request)
-{
-    try {
-        $streamId = $request->input('stream_id');
-        $userId = $request->input('user_id');
+    public function iniciarStream(Request $request)
+    {
+        try {
+            $streamId = $request->input('stream_id');
+            $userId   = $request->input('user_id');
 
-        if (! $streamId || ! $userId) {
-            return response()->json(['message' => 'Se requieren stream_id y user_id.'], 400);
-        }
+            if (! $streamId || ! $userId) {
+                return response()->json(['message' => 'Se requieren stream_id y user_id.'], 400);
+            }
+            $stream = $this->autorizarYObtenerStream($streamId, $userId);
+            $canal  = optional(optional($stream->video)->canal);
+            $video  = $stream->video;
 
-        $stream = $this->autorizarYObtenerStream($streamId, $userId);
-        $canal = optional(optional($stream->video)->canal);
+            if (! $video) {
+                return response()->json(['message' => 'Stream sin video asociado.'], 404);
+            }
+            if ($video->estado === 'DIRECTO') {
+                return response()->json(['message' => 'El stream ya estaba activo (estado DIRECTO).'], 200);
+            }
+            $streamActivoExistente = $canal->streamActual()->first();
 
-        if ($stream->activo) {
-            return response()->json(['message' => 'El stream ya estaba activo.'], 200);
-        }
+            if ($streamActivoExistente && $streamActivoExistente->id !== $streamId) {
+                return response()->json([
+                    'message'          => 'Ya existe un stream activo para este canal. Finalícelo primero.',
+                    'active_stream_id' => $streamActivoExistente->id,
+                ], 409);
+            }
+            $video->update(['estado' => 'DIRECTO']);
 
-        $streamActivoExistente = $canal->streamActual()->first();
-
-        if ($streamActivoExistente) {
             return response()->json([
-                'message' => 'Ya existe un stream activo para este canal. Finalícelo primero.',
-                'active_stream_id' => $streamActivoExistente->id
-            ], 409);
+                'message'   => 'Stream iniciado. El estado del video es ahora DIRECTO.',
+                'stream_id' => $stream->id,
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Stream o Canal no encontrado.'], 404);
+        } catch (Exception $e) {
+            if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
+                return response()->json(['message' => $e->getMessage()], 403);
+            }
+            Log::error("Error al iniciar stream: " . $e->getMessage());
+            return response()->json(['message' => 'Error interno al iniciar el stream.'], 500);
         }
-
-        $stream->update(['activo' => true]);
-
-        return response()->json([
-            'message' => 'Stream iniciado y marcado como activo.',
-            'stream_id' => $stream->id
-        ], 200);
-
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        return response()->json(['message' => 'Stream o Canal no encontrado.'], 404);
-    } catch (\Exception $e) {
-        if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
-            return response()->json(['message' => $e->getMessage()], 403);
-        }
-        Log::error("Error al iniciar stream: " . $e->getMessage());
-        return response()->json(['message' => 'Error interno al iniciar el stream.'], 500);
     }
-}
 
-public function finalizarStream(Request $request)
-{
-    try {
-        $streamId = $request->input('stream_id');
-        $userId = $request->input('user_id');
+    public function finalizarStream(Request $request)
+    {
+        try {
+            $streamId = $request->input('stream_id');
+            $userId   = $request->input('user_id');
 
-        if (! $streamId || ! $userId) {
-            return response()->json(['message' => 'Se requieren stream_id y user_id.'], 400);
+            if (! $streamId || ! $userId) {
+                return response()->json(['message' => 'Se requieren stream_id y user_id.'], 400);
+            }
+            $stream = $this->autorizarYObtenerStream($streamId, $userId);
+            $video  = $stream->video;
+
+            if (! $video) {
+                throw new ModelNotFoundException("Stream sin video asociado.");
+            }
+            if ($video->estado !== 'DIRECTO') {
+                $message = "Stream finalizado previamente (estado: {$video->estado}).";
+                if ($video->estado === 'PROGRAMADO') {
+                    $message = 'Stream no estaba activo. Su estado permanece como PROGRAMADO.';
+                }
+                return response()->json(['message' => $message], 200);
+            }
+            $video->update(['estado' => 'FINALIZADO']);
+            try {
+                $vodData = $this->subirVideoDeStream($streamId);
+
+                $host   = $this->obtenerHostMinio();
+                $bucket = $this->obtenerBucket();
+                $video  = $vodData['video'];
+                $rutaS3 = $vodData['rutaS3'];
+
+                return response()->json([
+                    'message'       => 'Stream finalizado y video VOD subido correctamente.',
+                    'video_url'     => $this->obtenerUrlArchivo($rutaS3, $host, $bucket),
+                    'miniatura_url' => $this->obtenerUrlArchivo($video->miniatura, $host, $bucket),
+                    'video_id'      => $video->id,
+                ], 200);
+
+            } catch (\Exception $e) {
+                if ($e->getMessage() === 'STREAM_MISSING_VIDEO') {
+                    return response()->json([
+                        'message'   => 'Stream finalizado. Advertencia: No se encontró un registro de Video asociado para procesar el VOD.',
+                        'stream_id' => $streamId,
+                    ], 202);
+                }
+                Log::error("Error VOD al finalizar stream: " . $e->getMessage());
+                return response()->json([
+                    'message' => 'Stream finalizado, pero falló el procesamiento VOD.',
+                    'detalle' => $e->getMessage(),
+                ], 500);
+            }
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Stream o Canal no encontrado.'], 404);
+        } catch (\Exception $e) {
+            if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
+                return response()->json(['message' => $e->getMessage()], 403);
+            }
+            Log::error("Error al finalizar stream (antes de VOD): " . $e->getMessage());
+            return response()->json(['message' => 'Error interno al finalizar el stream.'], 500);
+        }
+    }
+
+    private function subirVideoDeStream($streamId): array
+    {
+        $stream = $this->obtenerStreamPorId($streamId);
+
+        if (! $stream->video) {
+            throw new \Exception('STREAM_MISSING_VIDEO');
         }
 
-        $stream = $this->autorizarYObtenerStream($streamId, $userId);
+        $archivoFLV = $this->obtenerArchivoFLVDesdeMinio($stream);
+        $rutaMP4    = $this->convertirFLVaMP4($archivoFLV);
+        $rutaS3     = $this->subirVideoConvertidoAMinio($stream, $rutaMP4, $archivoFLV);
+        $video      = $this->finalizarRegistroDeVideo($stream, $rutaS3, $rutaMP4);
 
-        if (! $stream->activo) {
-            
+        return [
+            'rutaS3' => $rutaS3,
+            'video'  => $video,
+        ];
+    }
+
+    private function autorizarYObtenerStream(int $streamId, $userId): Stream
+    {
+        $stream = Stream::with('video.canal')->findOrFail($streamId);
+        $canal  = optional(optional($stream->video)->canal);
+
+        if (! $canal) {
+            throw new \Exception('El stream no está vinculado a un canal válido.');
         }
 
-        $stream->update(['activo' => false]);
+        if ($canal->user_id !== (int) $userId) {
+            throw new \Exception('Acceso denegado: El usuario no es el dueño del canal.');
+        }
+
+        return $stream;
+    }
+
+    private function obtenerStreamPorId($streamId)
+    {
+        $stream = Stream::with('video')->find($streamId);
+        if (! $stream) {
+            throw new \Exception('No se encontró un stream con el ID proporcionado.');
+        }
+        return $stream;
+    }
+
+    private function obtenerArchivoFLVDesdeMinio(Stream $stream): string
+    {
+        $directorio = 'streams';
+        $canal      = optional(optional($stream->video)->canal);
+
+        if (! $canal) {
+            throw new \Exception('El stream no está vinculado a un canal válido (falta Video o Canal).');
+        }
+
+        $streamKey = $canal->stream_key;
+
+        if (! $streamKey) {
+            throw new \Exception('No se pudo encontrar el stream_key del canal para localizar el archivo FLV.');
+        }
+
+        $patron = '/^' . preg_quote("{$directorio}/{$streamKey}-", '/') . '\d+\.flv$/';
+
+        $archivoEncontrado = collect(Storage::disk('s3')->files($directorio))
+            ->first(fn($archivo) => preg_match($patron, $archivo));
+
+        if ($archivoEncontrado) {
+            return $archivoEncontrado;
+        }
+
+        $rutaSimple = "{$directorio}/{$streamKey}.flv";
+
+        if (Storage::disk('s3')->exists($rutaSimple)) {
+            return $rutaSimple;
+        }
+
+        throw new \Exception("Archivo FLV no encontrado en MinIO en la ruta esperada. Patrones probados: {$directorio}/{$streamKey}-*.flv y {$rutaSimple}");
+    }
+
+    private function convertirFLVaMP4(string $rutaFLV): string
+    {
+        $nombreBase   = pathinfo($rutaFLV, PATHINFO_FILENAME);
+        $rutaLocalFLV = $this->descargarArchivoDesdeMinio($rutaFLV, $nombreBase, 'flv');
+        $rutaLocalMP4 = $this->convertirArchivoConFFMpeg($rutaLocalFLV, $nombreBase, 'mp4');
+        $this->eliminarArchivoLocal($rutaLocalFLV);
+        return $rutaLocalMP4;
+    }
+
+    private function descargarArchivoDesdeMinio(string $rutaRemota, string $nombreBase, string $extension): string
+    {
+        $rutaLocal = storage_path("app/temp/{$nombreBase}.{$extension}");
+        $this->crearDirectorioSiNoExiste(dirname($rutaLocal));
+        Storage::disk('s3')->getDriver()->getAdapter()->getClient()->getObject([
+            'Bucket' => env('AWS_BUCKET'),
+            'Key'    => $rutaRemota,
+            'SaveAs' => $rutaLocal,
+        ]);
+        if (! file_exists($rutaLocal)) {
+            throw new \Exception("Error al descargar el archivo desde MinIO: {$rutaRemota}");
+        }
+        return $rutaLocal;
+    }
+
+    private function convertirArchivoConFFMpeg(string $rutaEntrada, string $nombreBase, string $extensionSalida): string
+    {
+        $rutaSalida = storage_path("app/temp/{$nombreBase}.{$extensionSalida}");
+        $comando    = [
+            env('FFMPEG_BINARIES', '/usr/bin/ffmpeg'),
+            '-y',
+            '-i', $rutaEntrada,
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-c:a', 'aac',
+            '-b:a', '128k',
+            '-movflags', '+faststart',
+            $rutaSalida,
+        ];
+        $this->ejecutarComandoFFMpeg($comando);
+
+        if (! file_exists($rutaSalida)) {
+            throw new \Exception("Error al generar el archivo convertido: {$rutaSalida}");
+        }
+        return $rutaSalida;
+    }
+
+    private function ejecutarComandoFFMpeg(array $comando): void
+    {
+        $proceso = new Process($comando);
 
         try {
-            $vodData = $this->subirVideoDeStream($streamId);
+            $proceso->mustRun();
+        } catch (ProcessFailedException $e) {
+            Log::error('Error al ejecutar FFMpeg', ['error' => $e->getMessage(), 'output' => $proceso->getErrorOutput()]);
+            throw new \Exception('Error al convertir el archivo con FFMpeg.');
+        }
+    }
 
-            $host = $this->obtenerHostMinio();
-            $bucket = $this->obtenerBucket();
-            $video = $vodData['video'];
-            $rutaS3 = $vodData['rutaS3'];
+    private function eliminarArchivoLocal(string $rutaArchivo): void
+    {
+        if (file_exists($rutaArchivo)) {
+            unlink($rutaArchivo);
+        }
+    }
 
-            return response()->json([
-                'message' => 'Stream finalizado y video VOD subido correctamente.',
-                'video_url' => $this->obtenerUrlArchivo($rutaS3, $host, $bucket),
-                'miniatura_url' => $this->obtenerUrlArchivo($video->miniatura, $host, $bucket),
-                'video_id' => $video->id,
-            ], 200);
+    private function subirVideoConvertidoAMinio($stream, string $rutaMP4, string $archivoFLV): string
+    {
+        $rutaS3 = $this->guardarArchivoEnS3($stream, $rutaMP4);
+        $this->eliminarArchivoDeMinio($archivoFLV);
+        return $rutaS3;
+    }
 
-        } catch (\Exception $e) {
-            if ($e->getMessage() === 'STREAM_MISSING_VIDEO') {
-                return response()->json([
-                    'message' => 'Stream finalizado. Advertencia: No se encontró un registro de Video asociado para procesar el VOD.',
-                    'stream_id' => $streamId,
-                ], 202);
-            }
+    private function guardarArchivoEnS3($stream, string $rutaArchivo): string
+    {
+        $carpeta       = "videos/{$stream->video->canal_id}";
+        $nombreArchivo = bin2hex(random_bytes(16)) . '.mp4';
+        $rutaS3        = "{$carpeta}/{$nombreArchivo}";
 
-            Log::error("Error VOD al finalizar stream: " . $e->getMessage());
-            return response()->json([
-                'message' => 'Stream finalizado, pero falló el procesamiento VOD.',
-                'detalle' => $e->getMessage(),
-            ], 500);
+        Storage::disk('s3')->put($rutaS3, file_get_contents($rutaArchivo), [
+            'Metadata' => [
+                'titulo_video' => $stream->video->titulo,
+                'descripcion'  => $stream->video->descripcion,
+            ],
+        ]);
+
+        return $rutaS3;
+    }
+
+    private function eliminarArchivoDeMinio(string $rutaArchivo): void
+    {
+        if (Storage::disk('s3')->exists($rutaArchivo)) {
+            Storage::disk('s3')->delete($rutaArchivo);
+        }
+    }
+
+    private function finalizarRegistroDeVideo(Stream $stream, string $rutaVideo, string $rutaMP4): Video
+    {
+        $video = $stream->video;
+        if (! $video) {
+            throw new \Exception('No se pudo encontrar el registro de Video para actualizar.');
         }
 
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        return response()->json(['message' => 'Stream o Canal no encontrado.'], 404);
-    } catch (\Exception $e) {
-        if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
-            return response()->json(['message' => $e->getMessage()], 403);
+        $duracion = $this->obtenerDuracionDeVideo($rutaMP4);
+
+        $video->update([
+            'link'     => $rutaVideo,
+            'duracion' => $duracion,
+        ]);
+
+        $this->eliminarArchivoLocal($rutaMP4);
+
+        return $video;
+    }
+
+    private function obtenerDuracionDeVideo(string $rutaArchivo): int
+    {
+        if (! file_exists($rutaArchivo)) {
+            throw new \Exception('Archivo no encontrado para calcular la duración.');
         }
-        Log::error("Error al finalizar stream (antes de VOD): " . $e->getMessage());
-        return response()->json(['message' => 'Error interno al finalizar el stream.'], 500);
-    }
-}
+        $ffprobe  = \FFMpeg\FFProbe::create();
+        $duracion = $ffprobe->format($rutaArchivo)->get('duration');
 
-private function subirVideoDeStream($streamId): array
-{
-    $stream = $this->obtenerStreamPorId($streamId);
-
-    if (! $stream->video) {
-        throw new \Exception('STREAM_MISSING_VIDEO');
+        if ($duracion === null) {
+            throw new \Exception('No se pudo obtener la duración del video.');
+        }
+        return (int) floor($duracion);
     }
 
-    $archivoFLV = $this->obtenerArchivoFLVDesdeMinio($stream);
-    $rutaMP4 = $this->convertirFLVaMP4($archivoFLV);
-    $rutaS3 = $this->subirVideoConvertidoAMinio($stream, $rutaMP4, $archivoFLV);
-    $video = $this->finalizarRegistroDeVideo($stream, $rutaS3, $rutaMP4);
-
-    return [
-        'rutaS3' => $rutaS3,
-        'video' => $video,
-    ];
-}
-
-private function autorizarYObtenerStream(int $streamId, $userId): Stream
-{
-    $stream = Stream::with('video.canal')->findOrFail($streamId);
-    $canal = optional(optional($stream->video)->canal);
-
-    if (! $canal) {
-        throw new \Exception('El stream no está vinculado a un canal válido.');
+    private function crearDirectorioSiNoExiste(string $directorio): void
+    {
+        if (! is_dir($directorio)) {
+            mkdir($directorio, 0755, true);
+        }
     }
 
-    if ($canal->user_id !== (int) $userId) {
-        throw new \Exception('Acceso denegado: El usuario no es el dueño del canal.');
-    }
-
-    return $stream;
-}
-
-private function obtenerStreamPorId($streamId)
-{
-    $stream = Stream::with('video')->find($streamId);
-    if (! $stream) {
-        throw new \Exception('No se encontró un stream con el ID proporcionado.');
-    }
-    return $stream;
-}
-
-private function obtenerArchivoFLVDesdeMinio(Stream $stream): string
-{
-    $directorio = 'streams';
-    $canal = optional(optional($stream->video)->canal);
-
-    if (! $canal) {
-        throw new \Exception('El stream no está vinculado a un canal válido (falta Video o Canal).');
-    }
-
-    $streamKey = $canal->stream_key;
-
-    if (! $streamKey) {
-        throw new \Exception('No se pudo encontrar el stream_key del canal para localizar el archivo FLV.');
-    }
-
-    $patron = '/^' . preg_quote("{$directorio}/{$streamKey}-", '/') . '\d+\.flv$/';
-
-    $archivoEncontrado = collect(Storage::disk('s3')->files($directorio))
-        ->first(fn($archivo) => preg_match($patron, $archivo));
-
-    if ($archivoEncontrado) {
-        return $archivoEncontrado;
-    }
-
-    $rutaSimple = "{$directorio}/{$streamKey}.flv";
-
-    if (Storage::disk('s3')->exists($rutaSimple)) {
-        return $rutaSimple;
-    }
-
-    throw new \Exception("Archivo FLV no encontrado en MinIO en la ruta esperada. Patrones probados: {$directorio}/{$streamKey}-*.flv y {$rutaSimple}");
-}
-
-private function convertirFLVaMP4(string $rutaFLV): string
-{
-    $nombreBase = pathinfo($rutaFLV, PATHINFO_FILENAME);
-    $rutaLocalFLV = $this->descargarArchivoDesdeMinio($rutaFLV, $nombreBase, 'flv');
-    $rutaLocalMP4 = $this->convertirArchivoConFFMpeg($rutaLocalFLV, $nombreBase, 'mp4');
-    $this->eliminarArchivoLocal($rutaLocalFLV);
-    return $rutaLocalMP4;
-}
-
-private function descargarArchivoDesdeMinio(string $rutaRemota, string $nombreBase, string $extension): string
-{
-    $rutaLocal = storage_path("app/temp/{$nombreBase}.{$extension}");
-    $this->crearDirectorioSiNoExiste(dirname($rutaLocal));
-    Storage::disk('s3')->getDriver()->getAdapter()->getClient()->getObject([
-        'Bucket' => env('AWS_BUCKET'),
-        'Key' => $rutaRemota,
-        'SaveAs' => $rutaLocal,
-    ]);
-    if (! file_exists($rutaLocal)) {
-        throw new \Exception("Error al descargar el archivo desde MinIO: {$rutaRemota}");
-    }
-    return $rutaLocal;
-}
-
-private function convertirArchivoConFFMpeg(string $rutaEntrada, string $nombreBase, string $extensionSalida): string
-{
-    $rutaSalida = storage_path("app/temp/{$nombreBase}.{$extensionSalida}");
-    $comando = [
-        env('FFMPEG_BINARIES', '/usr/bin/ffmpeg'),
-        '-y',
-        '-i', $rutaEntrada,
-        '-c:v', 'libx264',
-        '-preset', 'fast',
-        '-crf', '23',
-        '-c:a', 'aac',
-        '-b:a', '128k',
-        '-movflags', '+faststart',
-        $rutaSalida,
-    ];
-    $this->ejecutarComandoFFMpeg($comando);
-
-    if (! file_exists($rutaSalida)) {
-        throw new \Exception("Error al generar el archivo convertido: {$rutaSalida}");
-    }
-    return $rutaSalida;
-}
-
-private function ejecutarComandoFFMpeg(array $comando): void
-{
-    $proceso = new Process($comando);
-
-    try {
-        $proceso->mustRun();
-    } catch (ProcessFailedException $e) {
-        Log::error('Error al ejecutar FFMpeg', ['error' => $e->getMessage(), 'output' => $proceso->getErrorOutput()]);
-        throw new \Exception('Error al convertir el archivo con FFMpeg.');
-    }
-}
-
-private function eliminarArchivoLocal(string $rutaArchivo): void
-{
-    if (file_exists($rutaArchivo)) {
-        unlink($rutaArchivo);
-    }
-}
-
-private function subirVideoConvertidoAMinio($stream, string $rutaMP4, string $archivoFLV): string
-{
-    $rutaS3 = $this->guardarArchivoEnS3($stream, $rutaMP4);
-    $this->eliminarArchivoDeMinio($archivoFLV);
-    return $rutaS3;
-}
-
-private function guardarArchivoEnS3($stream, string $rutaArchivo): string
-{
-    $carpeta = "videos/{$stream->video->canal_id}";
-    $nombreArchivo = bin2hex(random_bytes(16)) . '.mp4';
-    $rutaS3 = "{$carpeta}/{$nombreArchivo}";
-
-    Storage::disk('s3')->put($rutaS3, file_get_contents($rutaArchivo), [
-        'Metadata' => [
-            'titulo_video' => $stream->video->titulo,
-            'descripcion' => $stream->video->descripcion,
-        ],
-    ]);
-
-    return $rutaS3;
-}
-
-private function eliminarArchivoDeMinio(string $rutaArchivo): void
-{
-    if (Storage::disk('s3')->exists($rutaArchivo)) {
-        Storage::disk('s3')->delete($rutaArchivo);
-    }
-}
-
-private function finalizarRegistroDeVideo(Stream $stream, string $rutaVideo, string $rutaMP4): Video
-{
-    $video = $stream->video;
-    if (! $video) {
-        throw new \Exception('No se pudo encontrar el registro de Video para actualizar.');
-    }
-
-    $duracion = $this->obtenerDuracionDeVideo($rutaMP4);
-
-    $video->update([
-        'link' => $rutaVideo,
-        'duracion' => $duracion,
-    ]);
-
-    $this->eliminarArchivoLocal($rutaMP4);
-
-    return $video;
-}
-
-private function obtenerDuracionDeVideo(string $rutaArchivo): int
-{
-    if (! file_exists($rutaArchivo)) {
-        throw new \Exception('Archivo no encontrado para calcular la duración.');
-    }
-    $ffprobe = \FFMpeg\FFProbe::create();
-    $duracion = $ffprobe->format($rutaArchivo)->get('duration');
-
-    if ($duracion === null) {
-        throw new \Exception('No se pudo obtener la duración del video.');
-    }
-    return (int) floor($duracion);
-}
-
-private function crearDirectorioSiNoExiste(string $directorio): void
-{
-    if (! is_dir($directorio)) {
-        mkdir($directorio, 0755, true);
-    }
-}
-
-public function entrarView(Request $request, $streamId)
+    public function entrarView(Request $request, $streamId)
     {
         $service = new StreamViewerService();
         $count   = $service->añadirViewer((int) $streamId);
@@ -749,7 +753,6 @@ public function entrarView(Request $request, $streamId)
             'viewers' => $count,
         ]);
     }
-
 
     public function hlsEvent(Request $request)
     {

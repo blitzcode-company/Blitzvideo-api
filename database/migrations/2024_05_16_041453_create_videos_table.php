@@ -18,6 +18,7 @@ return new class extends Migration
             $table->boolean('bloqueado')->default(false);
             $table->enum('acceso', ['publico', 'privado'])->default('publico');
             $table->string('link')->unique();
+            $table->enum('estado', ['VIDEO', 'DIRECTO', 'PROGRAMADO', 'FINALIZADO'])->default('VIDEO');
             $table->timestamps();
             $table->softDeletes();
         });
