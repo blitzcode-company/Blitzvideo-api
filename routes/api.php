@@ -191,10 +191,8 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
 
         Route::get('/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
         Route::post('/canal/{canalId}', [StreamController::class, 'guardarNuevaTransmision']);
-        Route::post('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
-        Route::delete('/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
-        Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
-        Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
+        Route::post('/{transmision}/canal/{canalId}/update', [StreamController::class, 'actualizarDatosDeTransmision']);
+        Route::delete('/{transmision}/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
         
         Route::post('/chat/enviar', [ChatStreamController::class, 'mandarMensaje']);
     });
