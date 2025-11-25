@@ -413,7 +413,7 @@ class StreamController extends Controller
         ], 200, [], JSON_UNESCAPED_SLASHES);
     }
 
-    public function iniciarStream(Request $request)
+    public function activarStream(Request $request)
     {
         try {
             $streamId = $request->input('stream_id');
@@ -429,21 +429,29 @@ class StreamController extends Controller
             if (! $video) {
                 return response()->json(['message' => 'Stream sin video asociado.'], 404);
             }
+            if ($stream->activo == true) {
+                return response()->json(['message' => 'El stream ya está marcado como activo (Stream.activo=TRUE).'], 200);
+            }
             if ($video->estado === 'DIRECTO') {
                 return response()->json(['message' => 'El stream ya estaba activo (estado DIRECTO).'], 200);
             }
-            $streamActivoExistente = $canal->streamActual()->first();
+            $streamActivoExistente = Stream::whereHas('video', function ($query) use ($canal) {
+                $query->where('canal_id', $canal->id);
+            })
+                ->where('activo', true)
+                ->first();
 
-            if ($streamActivoExistente && $streamActivoExistente->id !== $streamId) {
+            if ($streamActivoExistente && $streamActivoExistente->id !== (int) $streamId) {
                 return response()->json([
                     'message'          => 'Ya existe un stream activo para este canal. Finalícelo primero.',
                     'active_stream_id' => $streamActivoExistente->id,
                 ], 409);
             }
-            $video->update(['estado' => 'DIRECTO']);
+            $stream->update(['activo' => true]);
+            $video->update(['estado' => 'PROGRAMADO']);
 
             return response()->json([
-                'message'   => 'Stream iniciado. El estado del video es ahora DIRECTO.',
+                'message'   => 'Stream marcado como activo (Stream.activo=TRUE). Esperando conexión de OBS para iniciar.',
                 'stream_id' => $stream->id,
             ], 200);
         } catch (ModelNotFoundException $e) {
@@ -457,7 +465,7 @@ class StreamController extends Controller
         }
     }
 
-    public function finalizarStream(Request $request)
+    public function desactivarStream(Request $request)
     {
         try {
             $streamId = $request->input('stream_id');
@@ -470,16 +478,135 @@ class StreamController extends Controller
             $video  = $stream->video;
 
             if (! $video) {
-                throw new ModelNotFoundException("Stream sin video asociado.");
+                return response()->json(['message' => 'Stream sin video asociado.'], 404);
             }
+            if ($stream->activo == false) {
+                return response()->json(['message' => 'El stream ya estaba inactivo.'], 200);
+            }
+            if ($video->estado === 'DIRECTO') {
+                return response()->json([
+                    'message' => 'No se puede desactivar manualmente un stream en estado DIRECTO. Desconecte OBS para finalizar la transmisión.',
+                ], 409);
+            }
+            $stream->update(['activo' => false]);
+            return response()->json([
+                'message'   => 'Stream desactivado correctamente (Stream.activo=FALSE).',
+                'stream_id' => $stream->id,
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Stream o Canal no encontrado.'], 404);
+        } catch (\Exception $e) {
+            if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
+                return response()->json(['message' => $e->getMessage()], 403);
+            }
+            Log::error("Error al desactivar stream: " . $e->getMessage());
+            return response()->json(['message' => 'Error interno al desactivar el stream.'], 500);
+        }
+    }
+
+    private function autorizarYObtenerStream(int $streamId, $userId): Stream
+    {
+        $stream = Stream::with('video.canal')->findOrFail($streamId);
+        $canal  = optional(optional($stream->video)->canal);
+
+        if (! $canal) {
+            throw new \Exception('El stream no está vinculado a un canal válido.');
+        }
+
+        if ($canal->user_id !== (int) $userId) {
+            throw new \Exception('Acceso denegado: El usuario no es el dueño del canal.');
+        }
+
+        return $stream;
+    }
+
+    public function iniciarStream(Request $request)
+    {
+        $streamKey = $request->input('name');
+
+        if (! $streamKey) {
+            Log::warning('Intento de publicación sin stream key.');
+            return response('Forbidden', 403);
+        }
+
+        try {
+            $canal = Canal::where('stream_key', $streamKey)->first();
+
+            if (! $canal) {
+                Log::warning("Publicación rechazada. Stream Key no encontrado: [{$streamKey}]");
+                return response('Not Found', 404);
+            }
+            $streamActivo = Stream::whereHas('video', function ($query) use ($canal) {
+                $query->where('canal_id', $canal->id);
+            })
+                ->where('activo', true)
+                ->with('video')
+                ->first();
+
+            if (! $streamActivo) {
+                Log::warning("Publicación denegada. El canal [{$canal->id}] existe, pero no tiene un Stream activo (activo=true) en la plataforma.");
+                return response('Forbidden - Stream Not Activated', 403);
+            }
+            $video = $streamActivo->video;
+
+            if ($video && $video->estado !== 'DIRECTO') {
+                $video->update(['estado' => 'DIRECTO']);
+                Log::info("Estado del Video ID [{$video->id}] actualizado a DIRECTO por la conexión RTMP.");
+            } elseif (! $video) {
+                Log::error("Stream activo [{$streamActivo->id}] sin registro de Video asociado. Publicación denegada.");
+                return response('Internal Error: Missing Video', 500);
+            }
+            Log::info("Publicación de stream autorizada para Stream Key: [{$streamKey}] (Stream activo=true en DB)");
+            return response('OK', 200);
+
+        } catch (Exception $e) {
+            Log::error("Error de DB al autenticar stream key: " . $e->getMessage());
+            return response('Internal Server Error', 500);
+        }
+    }
+
+    public function finalizarStream(Request $request)
+    {
+        $streamKey = $request->input('name');
+
+        if (! $streamKey) {
+            Log::error('Finalización automática fallida: No se recibió la stream key (name).');
+            return response('Error: Stream Key Missing', 400);
+        }
+
+        try {
+            $canal = Canal::where('stream_key', $streamKey)->firstOrFail();
+
+            $stream = Stream::whereHas('video', function ($query) use ($canal) {
+                $query->where('canal_id', $canal->id)->where('estado', 'DIRECTO');
+            })
+                ->where('activo', true)
+                ->with('video')
+                ->first();
+
+            if (! $stream) {
+                Log::info("Finalización automática ignorada: Stream Key [{$streamKey}] sin stream ACTIVO/DIRECTO encontrado.");
+                return response('OK', 200);
+            }
+
+            $video    = $stream->video;
+            $streamId = $stream->id;
+
+            if (! $video) {
+                throw new ModelNotFoundException("Stream ID {$streamId} sin video asociado.");
+            }
+
             if ($video->estado !== 'DIRECTO') {
-                $message = "Stream finalizado previamente (estado: {$video->estado}).";
-                if ($video->estado === 'PROGRAMADO') {
-                    $message = 'Stream no estaba activo. Su estado permanece como PROGRAMADO.';
+                if ($stream->activo === true) {
+                    $stream->update(['activo' => false]);
                 }
-                return response()->json(['message' => $message], 200);
+                Log::info("Finalización automática ignorada: Stream ID {$streamId} ya estaba en estado {$video->estado}.");
+                return response('OK', 200);
             }
+
             $video->update(['estado' => 'FINALIZADO']);
+            $stream->update(['activo' => false]);
+
             try {
                 $vodData = $this->subirVideoDeStream($streamId);
 
@@ -487,6 +614,8 @@ class StreamController extends Controller
                 $bucket = $this->obtenerBucket();
                 $video  = $vodData['video'];
                 $rutaS3 = $vodData['rutaS3'];
+
+                Log::info("Finalización y VOD exitoso para Stream Key: [{$streamKey}] (Stream ID: {$streamId})");
 
                 return response()->json([
                     'message'       => 'Stream finalizado y video VOD subido correctamente.',
@@ -497,25 +626,21 @@ class StreamController extends Controller
 
             } catch (\Exception $e) {
                 if ($e->getMessage() === 'STREAM_MISSING_VIDEO') {
-                    return response()->json([
-                        'message'   => 'Stream finalizado. Advertencia: No se encontró un registro de Video asociado para procesar el VOD.',
-                        'stream_id' => $streamId,
-                    ], 202);
+                    Log::warning("Stream finalizado. Advertencia VOD: Stream ID {$streamId} sin video asociado para procesar.");
+                    return response('OK, VOD Warning', 200);
                 }
-                Log::error("Error VOD al finalizar stream: " . $e->getMessage());
-                return response()->json([
-                    'message' => 'Stream finalizado, pero falló el procesamiento VOD.',
-                    'detalle' => $e->getMessage(),
-                ], 500);
+
+                Log::error("Error VOD al finalizar stream automático (Stream Key: {$streamKey}): " . $e->getMessage());
+                return response('VOD Processing Failed', 500);
             }
+
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Stream o Canal no encontrado.'], 404);
+            Log::warning("Finalización automática fallida: Canal o Stream no encontrado para Stream Key [{$streamKey}].");
+            return response('Not Found', 404);
+
         } catch (\Exception $e) {
-            if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
-                return response()->json(['message' => $e->getMessage()], 403);
-            }
-            Log::error("Error al finalizar stream (antes de VOD): " . $e->getMessage());
-            return response()->json(['message' => 'Error interno al finalizar el stream.'], 500);
+            Log::error("Error general al finalizar stream automático (Stream Key: {$streamKey}): " . $e->getMessage());
+            return response('Internal Server Error', 500);
         }
     }
 
@@ -536,22 +661,6 @@ class StreamController extends Controller
             'rutaS3' => $rutaS3,
             'video'  => $video,
         ];
-    }
-
-    private function autorizarYObtenerStream(int $streamId, $userId): Stream
-    {
-        $stream = Stream::with('video.canal')->findOrFail($streamId);
-        $canal  = optional(optional($stream->video)->canal);
-
-        if (! $canal) {
-            throw new \Exception('El stream no está vinculado a un canal válido.');
-        }
-
-        if ($canal->user_id !== (int) $userId) {
-            throw new \Exception('Acceso denegado: El usuario no es el dueño del canal.');
-        }
-
-        return $stream;
     }
 
     private function obtenerStreamPorId($streamId)
@@ -934,4 +1043,5 @@ class StreamController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
 }
