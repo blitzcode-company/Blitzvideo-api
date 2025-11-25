@@ -746,23 +746,20 @@ class StreamController extends Controller
         if (! $streamKey) {
             throw new \Exception('No se pudo encontrar el stream_key del canal para localizar el archivo FLV.');
         }
-
-        $patron = '/^' . preg_quote("{$directorio}/{$streamKey}-", '/') . '\d+\.flv$/';
-
-        $archivoEncontrado = collect(Storage::disk('s3')->files($directorio))
-            ->first(fn($archivo) => preg_match($patron, $archivo));
+        $patron            = '/' . preg_quote($streamKey . '-', '/') . '\d+\.flv$/';
+        $archivoEncontrado = collect(Storage::disk('s3')->allFiles($directorio))
+            ->first(function ($archivo) use ($patron) {
+                return preg_match($patron, $archivo);
+            });
 
         if ($archivoEncontrado) {
             return $archivoEncontrado;
         }
-
         $rutaSimple = "{$directorio}/{$streamKey}.flv";
-
         if (Storage::disk('s3')->exists($rutaSimple)) {
             return $rutaSimple;
         }
-
-        throw new \Exception("Archivo FLV no encontrado en MinIO en la ruta esperada. Patrones probados: {$directorio}/{$streamKey}-*.flv y {$rutaSimple}");
+        throw new \Exception("Archivo FLV no encontrado en MinIO en la ruta esperada. Patrón buscado: [{$streamKey}-<timestamp>.flv]");
     }
 
     private function convertirFLVaMP4(string $rutaFLV): string
