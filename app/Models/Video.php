@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +17,7 @@ class Video extends Model
         'duracion',
         'bloqueado',
         'acceso',
+        'estado',
     ];
 
     public function canal()
@@ -61,5 +61,10 @@ class Video extends Model
         return $this->belongsToMany(Publicidad::class, 'video_publicidad')
             ->withPivot('vistos')
             ->withTimestamps();
+    }
+
+    public function stream()
+    {
+        return $this->hasOne(Stream::class, 'video_id', 'id');
     }
 }

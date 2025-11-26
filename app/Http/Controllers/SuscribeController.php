@@ -122,7 +122,7 @@ class SuscribeController extends Controller
             'descripcion'  => $suscripcion->canal->descripcion,
             'portada'      => $suscripcion->canal->portada,
             'user'         => $suscripcion->canal->user,
-            'canal_online' => optional($suscripcion->canal->streams)->activo ? true : false,
+            'canal_online' => optional($suscripcion->canal->streams->first())->activo ?? false, 
         ]);
         return response()->json($resultado, 200);
     }

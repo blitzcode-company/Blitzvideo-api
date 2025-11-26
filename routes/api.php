@@ -78,8 +78,6 @@ Route::prefix('v1')->group(function () {
     Route::prefix('streams')->group(function () {
         Route::get('/', [StreamController::class, 'mostrarTodasLasTransmisiones']);
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
-        Route::post('/iniciar', [StreamController::class, 'IniciarStream']);
-        Route::post('/finalizar', [StreamController::class, 'FinalizarStream']);
         Route::get('/{stream_key}/viewers', [StreamController::class, 'obtenerViewers']);
         Route::post('/hls-event', [StreamController::class, 'hlsEvent']);
         Route::get('/metrics/{stream_key}', [StreamController::class, 'metricsHls']);
@@ -87,8 +85,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/{id}/entrar', [StreamController::class, 'entrarView']);
         Route::post('/{id}/salir', [StreamController::class, 'salirView']);
         Route::get('/{streamId}/heartbeat', [StreamController::class, 'heartbeat']);
-
         Route::get('/chat/mensajes/{streamId}', [ChatStreamController::class, 'obtenerMensajes']);
+        Route::post('/iniciar', [StreamController::class, 'iniciarStream']);
+        Route::post('/finalizar', [StreamController::class, 'finalizarStream']);
 
     });
     Route::prefix('publicidad')->group(function () {
@@ -191,13 +190,10 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
 
         Route::get('/canal/{canalId}', [StreamController::class, 'ListarTransmisionOBS']);
         Route::post('/canal/{canalId}', [StreamController::class, 'guardarNuevaTransmision']);
-        Route::post('/{transmision}/canal/{canalId}', [StreamController::class, 'actualizarDatosDeTransmision']);
-        Route::delete('/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
-        Route::post('/{streamId}/video', [StreamController::class, 'subirVideoDeStream']);
-        Route::get('/{streamId}/descargar', [StreamController::class, 'descargarStream']);
-        
+        Route::post('/{transmision}/canal/{canalId}/update', [StreamController::class, 'actualizarDatosDeTransmision']);
+        Route::delete('/{transmision}/canal/{canalId}', [StreamController::class, 'eliminarTransmision']);
+        Route::post('/activar', [StreamController::class, 'activarStream']);
+        Route::post('/desactivar', [StreamController::class, 'desactivarStream']);
         Route::post('/chat/enviar', [ChatStreamController::class, 'mandarMensaje']);
     });
-
-
 });
