@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Events\EventoStream;
+use App\Events\ViewerStream;
 use App\Models\Canal;
 use App\Models\Stream;
 use App\Models\Video;
@@ -142,6 +142,7 @@ class StreamController extends Controller
                 'miniatura'   => $transmision->video->miniatura,
                 'duracion'    => $transmision->video->duracion,
                 'etiquetas'   => $transmision->video->etiquetas,
+                'created_at'   => $transmision->video->created_at,
             ],
             'canal'             => [
                 'id'         => $transmision->video->canal->id,
@@ -1114,7 +1115,7 @@ class StreamController extends Controller
         $service = new StreamViewerService();
         $count   = $service->heartbeat($streamId, $userId);
 
-        broadcast(new EventoStream($streamId, [
+        broadcast(new ViewerStream($streamId, [
             'type'  => 'viewer_count',
             'count' => $count,
         ]));
