@@ -43,12 +43,23 @@ class StreamController extends Controller
         return $host . $bucket . $rutaRelativa;
     }
 
+ private function obtenerUrlFotoPerfil(?string $rutaFoto, string $host, string $bucket)
+    {
+        if (! $rutaFoto) {
+            return $this->obtenerUrlArchivo('users/default_profile.png', $host, $bucket); 
+        }
+        return $this->obtenerUrlArchivo($rutaFoto, $host, $bucket);
+    }
+
     public function mostrarTodasLasTransmisiones()
     {
         $transmisiones = Stream::with([
             'video' => function ($query) {
                 $query->select('id', 'titulo', 'descripcion', 'link', 'miniatura', 'duracion', 'canal_id');
-                $query->with('canal:id,nombre,stream_key');
+                $query->with(['canal' => function ($canalQuery) {
+                    $canalQuery->select('id', 'nombre', 'user_id'); 
+                    $canalQuery->with('user:id,foto');                            
+                }]);
             },
         ])->get();
 
@@ -64,10 +75,20 @@ class StreamController extends Controller
             $pattern              = "stream:{$transmision->id}:viewer:*";
             $viewers              = count(Redis::keys($pattern));
             $transmision->viewers = $viewers;
-
             if ($transmision->video->miniatura) {
                 $transmision->video->miniatura = $this->obtenerUrlArchivo($transmision->video->miniatura, $host, $bucket);
             }
+            $foto_url = null;
+            if (optional($transmision->video->canal)->user) {
+                $foto_ruta = $transmision->video->canal->user->foto;
+                $foto_url = $this->obtenerUrlFotoPerfil($foto_ruta, $host, $bucket); 
+            }
+            $canal_data = [
+                'id'         => optional($transmision->video->canal)->id,
+                'nombre'     => optional($transmision->video->canal)->nombre,
+                'user_id'    => optional(optional($transmision->video->canal)->user)->id,
+                'foto'       => $foto_url,
+            ];
 
             return [
                 'id'                => $transmision->id,
@@ -83,7 +104,7 @@ class StreamController extends Controller
                 'miniatura'         => $transmision->video->miniatura,
                 'duracion'          => $transmision->video->duracion,
 
-                'canal'             => $transmision->video->canal,
+                'canal'             => $canal_data,
             ];
         })->filter()->values();
 
