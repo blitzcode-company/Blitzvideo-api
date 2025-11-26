@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
 
-class EventoStream implements ShouldBroadcastNow
+class ViewerStream implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -38,7 +38,7 @@ class EventoStream implements ShouldBroadcastNow
      */
       public function broadcastOn()
     {
-        return new PrivateChannel('stream.' . $this->streamId);
+        return new Channel('stream.' . $this->streamId);
     }
 
     public function broadcastAs()

@@ -21,6 +21,7 @@ class MensajeChatStream implements ShouldBroadcastNow
     public function __construct(Mensaje $mensaje)
     {
         $this->mensaje = $mensaje;
+        
     }
 
     public function broadcastOn()
