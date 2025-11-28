@@ -1100,9 +1100,9 @@ class StreamController extends Controller
         ]);
     }
 
-    public function obtenerViewers($stream_key)
+    public function obtenerViewers($streamId)
     {
-        $redisKey = "viewers:live/{$stream_key}";
+        $redisKey = "stream:{$streamId}:viewers";
         $viewers  = (int) Redis::get($redisKey) ?: 0;
 
         return response()->json(['viewers' => $viewers]);
