@@ -279,7 +279,7 @@ class VideoController extends Controller
         $this->validarEdicionDeVideo($request);
         $video = Video::with('canal.user')->findOrFail($idVideo);
         $this->procesarEdicionDeVideo($request, $video);
-        return response()->json(['message' => 'Video actualizado correctamente'], 200);
+        return response()->json(['message' => 'Video actualizado correctamente', 'video' => $video], 200);
     }
 
     private function validarEdicionDeVideo($request)
@@ -287,6 +287,7 @@ class VideoController extends Controller
         $rules = [
             'titulo'      => 'sometimes|required|string|max:255',
             'descripcion' => 'sometimes|required|string',
+            'acceso'      => 'sometimes|required|in:privado,publico',
             'video'       => 'sometimes|required|file|mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/x-flv,video/webm|max:120000',
             'miniatura'   => 'sometimes|required|image|mimes:jpeg,png,jpg,gif|max:10240',
         ];
@@ -304,6 +305,9 @@ class VideoController extends Controller
         if ($request->hasFile('miniatura')) {
             $this->procesarNuevoArchivo($request->file('miniatura'), $video, 'miniatura', $oldMiniaturaPath);
         }
+        if ($request->has('etiquetas')) {
+            $video->etiquetas()->sync($request->etiquetas);
+        }
         $video->save();
     }
 
@@ -316,6 +320,8 @@ class VideoController extends Controller
     {
         $video->titulo      = $request->input('titulo', $video->titulo);
         $video->descripcion = $request->input('descripcion', $video->descripcion);
+        $video->acceso = $request->input('acceso', $video->acceso);
+
     }
 
     private function procesarNuevoArchivo($nuevoArchivo, $video, $tipo, $oldArchivoPath, $oldMiniaturaPath = null)
