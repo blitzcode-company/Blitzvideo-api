@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Playlist;
 use App\Models\User;
+use App\Models\Canal;
 use Illuminate\Http\Request;
 
 class PlaylistController extends Controller
@@ -60,6 +61,73 @@ class PlaylistController extends Controller
             'Videos agregados exitosamente.',
             $playlist->load('videos')
         );
+    }
+
+
+    public function playlistsGuardadasPorElCanal(Request $request, $id)
+    {
+        $canal    = Canal::with('user')->findOrFail($id);
+        $propietarioId  = $canal->user_id;
+        $viewerId = (int) $request->query('user_id');
+        $esDueno  = $viewerId === $propietarioId;
+
+        $formatearPlaylist = function ($playlist) {
+            $primerVideo = $playlist->videos()->orderBy('video_lista.orden')->first();
+
+            return [
+                'id'           => $playlist->id,
+                'nombre'       => $playlist->nombre,
+                'autor_nombre' => $playlist->user?->name ?? 'Anónimo',
+                'autor_foto' => $playlist
+                    ? $this->obtenerUrlArchivo($playlist->user?->foto, $this->obtenerHostMinio(), $this->obtenerBucket())
+                    : null,
+                'total_videos' => $playlist->total_videos ?? 0,
+                'miniatura'    => $primerVideo
+                    ? $this->obtenerUrlArchivo($primerVideo->miniatura, $this->obtenerHostMinio(), $this->obtenerBucket())
+                    : null,
+                'created_at'   => $playlist->created_at,
+            ];
+        };
+
+        $playlistsCreadas = Playlist::where('user_id', $propietarioId)
+            ->when(!$esDueno, fn($q) => $q->where('acceso', 1))
+            ->with(['videos'])
+            ->withCount('videos as total_videos')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn($p) => $formatearPlaylist($p));
+
+        $playlistsGuardadas = User::find($propietarioId)
+            ->playlistsGuardadas()
+            ->with(['videos', 'user'])
+            ->withCount('videos as total_videos')
+            ->where(function ($q) use ($viewerId) {
+                $q->where('playlists.acceso', 1)                     
+                ->orWhere(function ($sq) use ($viewerId) {        
+                    $sq->where('playlists.acceso', 0)
+                        ->where('playlists.user_id', $viewerId);
+                });
+            })
+            ->orderBy('playlist_guardadas.orden')
+            ->get()
+            ->map(fn($p) => $formatearPlaylist($p));
+
+        return response()->json([
+            'playlists' => [
+                'creadas'   => $playlistsCreadas->values(),
+                'guardadas' => $playlistsGuardadas->values(),
+            ]
+        ]);
+    }
+
+    private function obtenerHostMinio()
+    {
+        return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+    }
+
+    private function obtenerBucket()
+    {
+        return env('AWS_BUCKET') . '/';
     }
 
     public function actualizarOrden(Request $request, $playlistId)
@@ -174,7 +242,19 @@ class PlaylistController extends Controller
 
     public function obtenerPlaylistConVideos(Request $request, $playlistId)
     {
-        $playlist     = $this->findPlaylist($playlistId);
+        $playlist = $this->findPlaylist($playlistId);
+
+        $viewerId = (int) $request->query('user_id');
+
+        $propietarioId = $playlist->user_id;
+
+        if ((int)$playlist->acceso === 0 && $viewerId !== $propietarioId) {
+            return response()->json([
+                'message' => 'No tienes permiso para ver esta playlist privada.'
+            ], 403);
+        }
+
+      
         $videoId      = $request->query('video_id');
         $fromPlaylist = $request->query('fromPlaylist', false);
 
@@ -182,19 +262,20 @@ class PlaylistController extends Controller
         $this->processVideos($playlistVideos);
 
         $playlistData = [
-                'id'         => $playlist->id,
-                'nombre'     => $playlist->nombre,
-                'acceso'     => $playlist->acceso,
-                'user_id'    => $playlist->user_id, 
-                'created_at' => $playlist->created_at,
-                'updated_at' => $playlist->updated_at,
-            ];
+            'id'         => $playlist->id,
+            'nombre'     => $playlist->nombre,
+            'acceso'     => $playlist->acceso,
+            'user_id'    => $playlist->user_id,
+            'created_at' => $playlist->created_at,
+            'updated_at' => $playlist->updated_at,
+        ];
 
         return $this->successResponse('Playlist y videos obtenidos exitosamente.', [
             'playlist' => $playlistData,
             'videos'   => $playlistVideos,
         ]);
     }
+
 
     public function quitarVideoDePlaylist(Request $request, $playlistId)
     {

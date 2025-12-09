@@ -117,6 +117,7 @@ class VideoController extends Controller
         if ($video->bloqueado) {
             return $this->respuestaError('El video está bloqueado y no se puede acceder.', 403);
         }
+        
         $this->ajustarRutasDeVideos($video);
         $video->promedio_puntuaciones = $video->puntuacion_promedio;
         return response()->json($video, 200);

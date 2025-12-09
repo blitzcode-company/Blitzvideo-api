@@ -64,9 +64,12 @@ class User extends Authenticatable
     }
 
     public function playlistsGuardadas()
-{
-    return $this->belongsToMany(Playlist::class, 'playlist_guardadas')
-                ->withPivot('orden')
-                ->orderBy('playlist_guardadas.orden');
-}
+    {
+        return $this->belongsToMany(
+            Playlist::class,
+            'playlist_guardadas',
+            'user_id',
+            'playlist_id'
+        )->withPivot('orden')->withTimestamps();
+    }
 }

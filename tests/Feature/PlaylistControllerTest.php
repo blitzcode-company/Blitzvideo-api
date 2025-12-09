@@ -5,13 +5,42 @@ use App\Models\Playlist;
 use App\Models\Puntua;
 use App\Models\User;
 use App\Models\Video;
+use App\Models\Canal;
 use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Illuminate\Http\Response;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Facades\DB;
 
 class PlaylistControllerTest extends TestCase
 {
     use WithoutMiddleware;
+
+    private $dueno;
+    private $otroUsuario;
+    private $canal;
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+       $this->dueno = User::create([
+            'name'     => 'Dueño ' . uniqid(),
+            'email'    => 'dueno_' . uniqid() . '@test.com', 
+            'password' => bcrypt('123456'),
+        ]);
+
+        $this->otroUsuario = User::create([
+            'name'     => 'Otro ' . uniqid(),
+            'email'    => 'otro_' . uniqid() . '@test.com', 
+            'password' => bcrypt('123456'),
+        ]);
+
+        $this->canal = Canal::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Canal de Prueba ' . uniqid(),
+        ]);
+        
+    }
 
     public function testPuedeCrearPlaylist()
     {
@@ -279,5 +308,121 @@ class PlaylistControllerTest extends TestCase
             'playlist_id' => $playlist->id,
             'video_id'    => $video->id,
         ]);
+    }
+
+    public function testVisitanteSoloVePlaylistsPublicasCreadas()
+    {
+        $publica = Playlist::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Mi Lista Pública',
+            'acceso'  => 1, 
+        ]);
+
+        Playlist::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Mi Lista Privada',
+            'acceso'  => 0, 
+        ]);
+
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "playlists/canal/{$this->canal->id}/playlists");
+
+        $response->assertStatus(200)
+                 ->assertJsonCount(1, 'playlists.creadas')
+                ->assertJsonPath('playlists.creadas.0.id', $publica->id);
+    }
+
+    public function testElDuenoVeSusPlaylistsCreadas()
+    {
+        Playlist::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Lista Pública',
+            'acceso'  => 1,
+        ]);
+
+        Playlist::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Lista Privada',
+            'acceso'  => 0,
+        ]);
+
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') .  "playlists/canal/{$this->canal->id}/playlists?user_id={$this->dueno->id}");
+
+        $response->assertStatus(200)
+                 ->assertJsonCount(2, 'playlists.creadas');
+                 
+    }
+    public function TestOtroUsuarioVeSoloPublicasYSusPrivadasGuardadas()
+    {
+        $playlistPublicaDueno = Playlist::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Pública del Dueño',
+            'acceso'  => 1,
+        ]);
+
+        Playlist::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Privada del Dueño',
+            'acceso'  => 0,
+        ]);
+
+        $playlistPrivadaOtro = Playlist::create([
+            'user_id' => $this->otroUsuario->id,
+            'nombre'  => 'Mi Lista Privada',
+            'acceso'  => 0,
+        ]);
+
+        DB::table('playlist_guardadas')->insert([
+            ['user_id' => $this->dueno->id, 'playlist_id' => $playlistPublicaDueno->id, 'orden' => 1],
+            ['user_id' => $this->dueno->id, 'playlist_id' => $playlistPrivadaOtro->id, 'orden' => 2],
+        ]);
+
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') .  "/playlists/canal/{$this->canal->id}/playlists?user_id={$this->otroUsuario->id}");
+
+        $response->assertStatus(200);
+
+        $response->assertJsonCount(1, 'playlists.creadas');
+        $response->assertJsonFragment(['id' => $playlistPublicaDueno->id]);
+
+        $response->assertJsonCount(2, 'playlists.guardadas');
+        $response->assertJsonFragment(['id' => $playlistPublicaDueno->id]);
+        $response->assertJsonFragment(['id' => $playlistPrivadaOtro->id]);
+    }
+
+ 
+    public function TestDevuelveMiniaturaYDatosDelAutorCorrectamente()
+    {
+        $playlist = Playlist::create([
+            'user_id' => $this->dueno->id,
+            'nombre'  => 'Con Video',
+            'acceso'  => 1,
+        ]);
+
+        $video = Video::create([
+            'canal_id'  => $this->canal->id,
+            'titulo'    => 'Primer Video',
+            'link'      => 'video_unico_1.mp4',
+            'miniatura' => 'miniaturas/prueba.jpg',
+            'duracion'  => 300,
+        ]);
+
+        DB::table('video_lista')->insert([
+            'playlist_id' => $playlist->id,
+            'video_id'    => $video->id,
+            'orden'       => 1,
+        ]);
+
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') .  "/playlists/canal/{$this->canal->id}/playlists");
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('playlists.creadas.0.miniatura', fn($url) => str_starts_with($url, 'http'))
+                 ->assertJsonPath('playlists.creadas.0.autor_nombre', $this->dueno->name)
+                 ->assertJsonPath('playlists.creadas.0.total_videos', 1);
+    }
+
+    
+    public function testDevuelve404SiCanalNoExiste()
+    {
+        $response = $this->getJson(env('BLITZVIDEO_BASE_URL') .  "/playlists/canal/999999/playlists");
+        $response->assertStatus(404);
     }
 }

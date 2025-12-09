@@ -7,6 +7,7 @@ use Illuminate\Http\Response;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Canal;
+use App\Models\Video;
 use App\Models\Suscribe;
 use App\Http\Controllers\CanalController;
 use Illuminate\Http\UploadedFile;
@@ -49,9 +50,36 @@ class CanalControllerTest extends TestCase
     {
         $canal = Canal::first();
         $canalId = $canal->id;
+
+    Video::insert(array_map(fn($i) => [
+        'canal_id' => $canal->id,
+        'titulo' => "Video $i",
+        'link'        => "testCanalPorId_{$i}.mp4",
+        'descripcion' => 'Descripcion para test',
+        'miniatura' => 'miniatura.jpg',
+        'duracion' => 180,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ], range(1, 5)));
+
+    $suscriptores = User::insert(array_map(fn($i) => [
+        'name' => "User $i",
+        'email' => "user$i@test.com",
+        'password' => bcrypt('123'),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ], range(1, 12)));
+
+    Suscribe::insert(array_map(fn($i) => [
+        'user_id' => $i + 10,
+        'canal_id' => $canal->id,
+        'created_at' => now(),
+    ], range(1, 12)));
+
         $response = $this->getJson(env('BLITZVIDEO_BASE_URL') . "canal/{$canalId}");
         $response->assertStatus(200);
-        $response->assertJsonStructure([
+       $response->assertJsonStructure([
+        'canal' => [
             'id',
             'user_id',
             'nombre',
@@ -70,7 +98,14 @@ class CanalControllerTest extends TestCase
                 'created_at',
                 'updated_at',
             ],
-        ]);
+        ],
+        'stats' => [
+            'suscriptores',
+            'visitas_totales',
+            'total_videos',
+            'crecimiento_30dias',
+        ],
+    ]);
     }
 
     public function testListarVideosDeCanal()

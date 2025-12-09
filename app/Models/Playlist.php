@@ -15,7 +15,10 @@ class Playlist extends Model
         'user_id',
     ];
 
-    
+    public function playlist()
+    {
+        return $this;
+    }
 
     public function user()
     {
@@ -31,6 +34,16 @@ class Playlist extends Model
 
     public function usuariosQueLaGuardaron()
     {
-        return $this->belongsToMany(User::class, 'playlist_guardadas');
+        return $this->belongsToMany(
+            User::class,
+            'playlist_guardadas',
+            'playlist_id',
+            'user_id'
+        )->withPivot('orden')->withTimestamps();
+    }
+
+    public function guardadaPor()
+    {
+        return $this->usuariosQueLaGuardaron();
     }
 }

@@ -64,7 +64,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/{etiquetaId}/canal/{canalId}/videos', [EtiquetaController::class, 'filtrarVideosPorEtiquetaYCanal']);
     });
     Route::prefix('playlists')->group(function () {
+        Route::get('/canal/{canalId}/playlists', [PlaylistController::class, 'playlistsGuardadasPorElCanal']);
+
         Route::get('/{userId}/playlists', [PlaylistController::class, 'ListarPlaylistsDeUsuario']);
+
         Route::get('/{userId}/playlists-guardadas', [PlaylistController::class, 'listarPlaylistsGuardadasDelUsuario']);
         Route::get('/{playlistId}/videos', [PlaylistController::class, 'ObtenerPlaylistConVideos']);
         Route::get('/{playlistId}/siguiente/{videoId}', [PlaylistController::class, 'obtenerSiguienteVideo']);

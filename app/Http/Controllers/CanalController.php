@@ -4,9 +4,16 @@ namespace App\Http\Controllers;
 use App\Models\Canal;
 use App\Models\Suscribe;
 use App\Models\Video;
+use App\Models\Visita;
+use App\Models\User;
+use App\Models\Playlist;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+
+use Illuminate\Support\Facades\DB;
+
 
 class CanalController extends Controller
 {
@@ -75,7 +82,37 @@ class CanalController extends Controller
             $canal->user->foto = $this->obtenerUrlArchivo($canal->user->foto, $host, $bucket);
         }
     
-        return response()->json($canal);
+    
+        $stats = $this->estadisticasCanal($id);
+
+        return response()->json([
+            'canal' => $canal,
+            'stats' => $stats
+        ]);
+    }
+
+
+    private function estadisticasCanal($id)
+    {
+        $suscriptores = Suscribe::where('canal_id', $id)->count();
+
+        $visitasTotales = Video::where('canal_id', $id)
+            ->withCount('visitas')
+            ->get()
+            ->sum('visitas_count');
+
+        $totalVideos = Video::where('canal_id', $id)->count();
+
+        $crecimiento30dias = Suscribe::where('canal_id', $id)
+            ->where('created_at', '>=', now()->subDays(30))
+            ->count();
+
+        return [
+            'suscriptores'       => $suscriptores,
+            'visitas_totales'    => (int)$visitasTotales,
+            'total_videos'       => $totalVideos,
+            'crecimiento_30dias' => $crecimiento30dias,
+        ];
     }
 
     private function obtenerVideosConRelaciones($canalId)
@@ -164,6 +201,10 @@ class CanalController extends Controller
             return response()->json(['message' => 'Ocurrió un error al dar de baja tu canal y tus videos, por favor inténtalo de nuevo más tarde'], 500);
         }
     }
+
+
+
+
 
     public function editarCanal(Request $request, $canalId)
     {
