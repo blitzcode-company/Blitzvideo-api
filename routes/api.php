@@ -38,15 +38,18 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('videos')->group(function () {
         Route::get('/', [VideoController::class, 'mostrarTodosLosVideos']);
-        Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
-        Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
-        Route::get('/tendencia/semana', [VideoController::class, 'listarTendencias']);
+
         Route::get('/masvistos', [VideoController::class, 'listarVideosMasVistos']);
+        Route::get('/tendencia/semana', [VideoController::class, 'listarTendencias']);
+        Route::get('/nombre/{nombre}', [VideoController::class, 'listarVideosPorNombre']);
+        Route::get('/usuario/{userId}/puntuaciones', [PuntuaController::class, 'listarPuntuacionesPorUsuario']);
+        Route::get('/{idEtiqueta}/videos', [VideoController::class, 'listarVideosPorEtiqueta']);
+
         Route::get('/{idVideo}/relacionados', [VideoController::class, 'listarVideosRelacionados']);
         Route::get('/{idVideo}/comentarios', [ComentarioController::class, 'traerComentariosDeVideo']);
         Route::get('/{idVideo}/puntuaciones', [PuntuaController::class, 'listarPuntuaciones']);
-        Route::get('/usuario/{userId}/puntuaciones', [PuntuaController::class, 'listarPuntuacionesPorUsuario']);
-        Route::get('/{idEtiqueta}/videos', [VideoController::class, 'listarVideosPorEtiqueta']);
+
+        Route::get('/{idVideo}', [VideoController::class, 'mostrarInformacionVideo']);
     });
     Route::prefix('canal')->group(function () {
         Route::get('/{canalId}/videos', [CanalController::class, 'listarVideosDeCanal']);

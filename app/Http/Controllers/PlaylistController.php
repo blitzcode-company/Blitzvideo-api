@@ -5,6 +5,7 @@ use App\Models\Playlist;
 use App\Models\User;
 use App\Models\Canal;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class PlaylistController extends Controller
 {
@@ -242,18 +243,25 @@ class PlaylistController extends Controller
 
     public function obtenerPlaylistConVideos(Request $request, $playlistId)
     {
-        $playlist = $this->findPlaylist($playlistId);
+        
+        try {
+            $playlist = $this->findPlaylist($playlistId);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Esta playlist no existe.'
+            ], 404);
+        }
 
-        $viewerId = (int) $request->query('user_id');
-
+        $viewerId      = (int) $request->query('user_id');
         $propietarioId = $playlist->user_id;
 
-        if ((int)$playlist->acceso === 0 && $viewerId !== $propietarioId) {
+        if ((int) $playlist->acceso === 0 && $viewerId !== $propietarioId) {
             return response()->json([
                 'message' => 'No tienes permiso para ver esta playlist privada.'
             ], 403);
         }
 
+        
       
         $videoId      = $request->query('video_id');
         $fromPlaylist = $request->query('fromPlaylist', false);
