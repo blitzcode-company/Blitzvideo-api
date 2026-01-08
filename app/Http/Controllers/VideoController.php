@@ -350,6 +350,44 @@ class VideoController extends Controller
         return response()->json(['message' => 'Video dado de baja correctamente'], 200);
     }
 
+    public function eliminarMultiplesVideos(Request $request)
+    {
+        $request->validate([
+            'video_ids' => 'required|array|min:1',
+            'video_ids.*' => 'required|integer|exists:videos,id'
+        ]);
+
+        $videoIds = $request->input('video_ids');
+        $videosEliminados = 0;
+        $errores = [];
+
+        foreach ($videoIds as $videoId) {
+            try {
+                $video = Video::findOrFail($videoId);
+                $video->delete();
+                $videosEliminados++;
+            } catch (\Exception $e) {
+                $errores[] = [
+                    'video_id' => $videoId,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $response = [
+            'success' => true,
+            'message' => "Se eliminaron {$videosEliminados} video(s) correctamente",
+            'videos_eliminados' => $videosEliminados,
+            'total_solicitados' => count($videoIds)
+        ];
+
+        if (!empty($errores)) {
+            $response['errores'] = $errores;
+        }
+
+        return response()->json($response, 200);
+    }
+
     public function listarVideosRecomendados($userId)
     {
         $videos = $this->obtenerVideosRecomendados($userId);

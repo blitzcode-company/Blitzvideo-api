@@ -136,6 +136,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/canal/{idCanal}', [VideoController::class, 'subirVideo']);
         Route::post('/{idVideo}', [VideoController::class, 'editarVideo']);
         Route::delete('/{idVideo}', [VideoController::class, 'bajaLogicaVideo']);
+        Route::post('/eliminar-multiples', [VideoController::class, 'eliminarMultiplesVideos']);
         Route::get('/usuario/{userId}', [VideoController::class, 'listarVideosRecomendados']);
         Route::post('/{idVideo}/comentarios', [ComentarioController::class, 'crearComentario'])->middleware('bloqueo_usuario');
         Route::post('/comentarios/respuesta/{idComentario}', [ComentarioController::class, 'responderComentario'])->middleware('bloqueo_usuario');
