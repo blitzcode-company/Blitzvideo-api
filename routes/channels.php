@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Log;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +25,11 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('stream.{id}', function ($user, $id) {
-    return true; 
-
+    // Permitir acceso si el usuario está autenticado
+    \Log::info('🔐 Autorizando canal stream.' . $id, [
+        'user_id' => $user ? $user->id : null,
+        'user_name' => $user ? $user->name : null,
+    ]);
+    
+    return $user !== null; // Solo verificar que hay un usuario autenticado
 });

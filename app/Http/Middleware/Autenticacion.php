@@ -6,8 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
-use App\Models\User; // Asegurate de importar tu modelo
-
+use App\Models\User; 
 class Autenticacion
 {
     public function handle(Request $request, Closure $next)
@@ -19,13 +18,11 @@ class Autenticacion
         if ($response->successful()) {
             $userData = $response->json();
 
-            // Crear un modelo User temporal con los datos necesarios
             $user = new User([
                 'id' => $userData['id'],
                 'name' => $userData['name'] ?? 'Sin Nombre'
             ]);
 
-            // Muy importante: setear el usuario autenticado manualmente
             Auth::setUser($user);
 
             return $next($request);
