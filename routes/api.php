@@ -116,6 +116,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/reportante/{userId}', [ReportaUsuarioController::class, 'listarReportesPorReportante']);
         });
     });
+        Route::prefix('password')->group(function () {
+        Route::post('/reset', [PasswordResetController::class, 'resetPassword'])->name('password.reset');
+    });
 
 });
 
@@ -123,6 +126,8 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('usuario')->group(function () {
         Route::get('{userId}/visita/{videoId}', [VisitaController::class, 'registrarVisita']);
         Route::get('{userId}/historial/', [VisitaController::class, 'historial']);
+        Route::post('/password', [UserController::class, 'cambiarContrasena']);
+
         Route::delete('{userId}', [UserController::class, 'darDeBajaUsuario']);
         Route::post('{userId}', [UserController::class, 'editarUsuario']);
     });
@@ -183,9 +188,7 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/comentario', [ReportaComentarioController::class, 'CrearReporte']);
         Route::post('/usuario', [ReportaUsuarioController::class, 'CrearReporte']);
     });
-    Route::prefix('password')->group(function () {
-        Route::post('/reset', [PasswordResetController::class, 'resetPassword'])->name('password.reset');
-    });
+
     Route::prefix('notificacion')->group(function () {
         Route::post('/vista', [NotificacionController::class, 'marcarNotificacionComoVista']);
         Route::get('/usuario/{usuarioId}', [NotificacionController::class, 'listarNotificacionesDelMes']);

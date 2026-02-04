@@ -3,6 +3,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -19,6 +21,42 @@ class UserController extends Controller
         });
         return response()->json($usuarios, 200);
     }
+
+   public function cambiarContrasena(Request $request)
+    {
+        $userId = $request->query('user_id');
+
+        $validator = Validator::make(
+            array_merge($request->all(), ['user_id' => $userId]),
+            [
+                'user_id'           => 'required|exists:users,id',
+                'current_password'  => 'required|string',
+                'new_password'      => 'required|string|min:8|confirmed',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = User::findOrFail($userId);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'error' => 'La contraseña actual es incorrecta'
+            ], 403);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Contraseña actualizada correctamente'
+        ]);
+    }
+
 
     private function generarUrlSiExiste($rutaRelativa, $host, $bucket)
     {

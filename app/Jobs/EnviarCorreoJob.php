@@ -29,17 +29,22 @@ class EnviarCorreoJob implements ShouldQueue
     public function handle()
     {
         $viewData = [
-            'asunto' => $this->asunto,
-            'mensaje' => $this->data['mensaje'],
-            'name' => $this->data['name'],
+            'asunto'  => $this->asunto,
+            'mensaje' => $this->data['mensaje'] ?? '',
+            'name'    => $this->data['name'] ?? 'Usuario',
         ];
-        if (isset($this->data['link'])) {
+
+        if (!empty($this->data['link'])) {
             $viewData['link'] = $this->data['link'];
         }
+
         Mail::send([], [], function ($correo) use ($viewData) {
             $correo->to($this->destinatario)
                 ->subject($viewData['asunto'])
-                ->setBody(view($this->template, $viewData)->render(), 'text/html');
+                ->setBody(
+                    view($this->template, $viewData)->render(),
+                    'text/html'
+                );
         });
     }
 }
