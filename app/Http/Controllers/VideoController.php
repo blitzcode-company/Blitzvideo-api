@@ -6,6 +6,7 @@ use App\Models\Canal;
 use App\Models\Etiqueta;
 use App\Models\Publicidad;
 use App\Models\Video;
+use App\Models\Visita;  
 use Carbon\Carbon;
 use FFMpeg\Coordinate\TimeCode;
 use Illuminate\Http\Request;
@@ -416,22 +417,55 @@ class VideoController extends Controller
             ->each(fn($video) => $video->promedio_puntuaciones = $video->puntuacion_promedio);
     }
 
-    private function obtenerVideosRecomendados($userId)
-    {
-        $categoriasMasVisitadas = $this->obtenerCategoriasMasVisitadasPorUsuario($userId);
-        return Video::with($this->datosDeRelacionesDeVideo())
-            ->withCount($this->obtenerContadoresDePuntuaciones())
-            ->withCount('visitas')
-            ->where('bloqueado', false)
-            ->where('acceso', 'publico')
-            ->whereHas('etiquetas', function ($query) use ($categoriasMasVisitadas) {
-                $query->whereIn('etiquetas.id', $categoriasMasVisitadas);
-            })
-            ->orderBy('visitas_count', 'desc')
-            ->take(8)
-            ->get()
-            ->each(fn($video) => $video->promedio_puntuaciones = $video->puntuacion_promedio);
+private function obtenerVideosRecomendados($userId)
+{
+    $categoriasMasVisitadas = $this->obtenerCategoriasMasVisitadasPorUsuario($userId);
+
+    $query = Video::with($this->datosDeRelacionesDeVideo())
+        ->withCount($this->obtenerContadoresDePuntuaciones())
+        ->withCount('visitas')
+        ->where('bloqueado', false)
+        ->where('acceso', 'publico')
+        ->whereHas('etiquetas', function ($query) use ($categoriasMasVisitadas) {
+            $query->whereIn('etiquetas.id', $categoriasMasVisitadas);
+        })
+        ->orderBy('visitas_count', 'desc')
+        ->take(8);
+
+    if ($userId && is_numeric($userId)) {
+        $query->addSelect([
+            'progreso_segundos' => Visita::select('segundos_vistos')
+                ->whereColumn('video_id', 'videos.id')
+                ->where('user_id', $userId)
+                ->orderBy('updated_at', 'desc')
+                ->limit(1),
+
+            'progreso_duracion' => Visita::select('duracion_video')
+                ->whereColumn('video_id', 'videos.id')
+                ->where('user_id', $userId)
+                ->orderBy('updated_at', 'desc')
+                ->limit(1),
+        ]);
     }
+
+    $videos = $query->get();
+
+    return $videos->each(function ($video) {
+        $video->promedio_puntuaciones = $video->puntuacion_promedio ?? 0;
+
+        if (isset($video->progreso_segundos) && $video->progreso_duracion > 0) {
+            $video->progreso_porcentaje = round(
+                ($video->progreso_segundos / $video->progreso_duracion) * 100,
+                1
+            );
+
+            $video->progreso_completado = $video->progreso_porcentaje >= 90;
+        } else {
+            $video->progreso_porcentaje = null;
+            $video->progreso_completado = false;
+        }
+    });
+}
 
     private function obtenerCategoriasMasVisitadasPorUsuario($userId)
     {

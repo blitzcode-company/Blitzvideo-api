@@ -42,4 +42,37 @@ class Canal extends Model
             ->where('activo', true)
             ->latest('id');
     }
+
+    public function getTotalVideosAttribute()
+    {
+        return $this->videos()->count();
+    }
+
+    public function getTotalVisitasAttribute()
+    {
+        return $this->videos()->withCount('visitas')->get()->sum('visitas_count');
+    }
+
+    public function getTotalVisitasValidasAttribute()
+    {
+        return Visita::whereIn('video_id', $this->videos->pluck('id'))
+            ->where('view_valida', true)
+            ->count();
+    }
+
+    public function getTotalHorasReproduccionAttribute()
+    {
+        $segundos = Visita::whereIn('video_id', $this->videos->pluck('id'))
+            ->sum('segundos_vistos');
+        return round($segundos / 3600, 2);
+    }
+
+    public function getVideosMasVistosAttribute($limite = 5)
+    {
+        return $this->videos()
+            ->withCount('visitas')
+            ->orderBy('visitas_count', 'desc')
+            ->take($limite)
+            ->get(['id', 'titulo', 'miniatura', 'duracion']);
+    }
 }

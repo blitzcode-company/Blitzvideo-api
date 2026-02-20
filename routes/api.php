@@ -3,6 +3,7 @@
 use App\Http\Controllers\CanalController;
 use App\Http\Controllers\ChatStreamController;
 use App\Http\Controllers\ComentarioController;
+use App\Http\Controllers\CreadoresController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\MeGustaController;
 use App\Http\Controllers\NotificacionController;
@@ -125,6 +126,8 @@ Route::prefix('v1')->group(function () {
 Route::prefix('v1')->middleware('auth.api')->group(function () {
     Route::prefix('usuario')->group(function () {
         Route::get('{userId}/visita/{videoId}', [VisitaController::class, 'registrarVisita']);
+        Route::get('visitas/progreso/{video}', [VisitaController::class, 'obtenerProgreso']);
+        Route::post('visitas/progreso', [VisitaController::class, 'actualizarProgreso']);
         Route::get('{userId}/historial/', [VisitaController::class, 'historial']);
         Route::post('/password', [UserController::class, 'cambiarContrasena']);
 
@@ -165,6 +168,21 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
          Route::post('/{playlistId}/guardar', [PlaylistController::class, 'guardarPlaylist']);
         Route::delete('/{playlistId}/guardar', [PlaylistController::class, 'quitarPlaylistGuardada']);
         Route::get('/{playlistId}/guardada', [PlaylistController::class, 'estaGuardada']);
+    });
+
+    Route::prefix('studio')->group(function () {
+        Route::post('/', [CreadoresController::class, 'resumen']);
+        Route::post('/videos/{video}/estadisticas', [CreadoresController::class, 'estadisticasVideo']);
+        Route::post('/vistas-periodo', [CreadoresController::class, 'vistasPorPeriodo']);
+        Route::post('/videos-top', [CreadoresController::class, 'videosTopRendimiento']);
+        Route::post('/audiencia', [CreadoresController::class, 'audiencia']);
+        Route::post('/paises', [CreadoresController::class, 'distribucionPaises']);
+        Route::post('/suscriptores', [CreadoresController::class, 'datosSuscriptores']);
+        Route::post('/vistas', [CreadoresController::class, 'historialVistas']);
+        Route::post('/tiempo-promedio', [CreadoresController::class, 'tiempoPromedioVisualizacion']);
+        Route::post('/tasa-completitud', [CreadoresController::class, 'tasaCompletitud']);
+        Route::post('/engagement', [CreadoresController::class, 'engagement']);
+        Route::post('/ingresos', [CreadoresController::class, 'ingresos']);
     });
 
     Route::prefix('canal')->group(function () {

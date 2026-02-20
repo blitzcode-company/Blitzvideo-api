@@ -9,10 +9,16 @@ class Visita extends Model
     protected $fillable = [
         'user_id',
         'video_id',
-        'ultima_visualizacion',
-        'progreso_segundos',
+        'segundos_vistos',
+        'duracion_video',
+        'view_valida',
         'completado',
-        'veces_visto',
+        'ultimo_heartbeat',
+    ];
+    protected $casts = [
+        'ultimo_heartbeat' => 'datetime',
+        'view_valida' => 'boolean',
+        'completado' => 'boolean',
     ];
 
     public function user()
