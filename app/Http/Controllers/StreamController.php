@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Events\ViewerStream;
@@ -6,6 +7,8 @@ use App\Models\Canal;
 use App\Models\Stream;
 use App\Models\Video;
 use App\Services\StreamViewerService;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,47 +21,16 @@ use Symfony\Component\Process\Process;
 
 class StreamController extends Controller
 {
-
-    private function obtenerHostMinio()
-    {
-        return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
-    }
-
-    private function obtenerBucket()
-    {
-        return env('AWS_BUCKET') . '/';
-    }
-
-    private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
-    {
-        if (! $rutaRelativa) {
-            return null;
-        }
-        if (str_starts_with($rutaRelativa, $host . $bucket)) {
-            return $rutaRelativa;
-        }
-        if (filter_var($rutaRelativa, FILTER_VALIDATE_URL)) {
-            return $rutaRelativa;
-        }
-        return $host . $bucket . $rutaRelativa;
-    }
-
- private function obtenerUrlFotoPerfil(?string $rutaFoto, string $host, string $bucket)
-    {
-        if (! $rutaFoto) {
-            return $this->obtenerUrlArchivo('users/default_profile.png', $host, $bucket); 
-        }
-        return $this->obtenerUrlArchivo($rutaFoto, $host, $bucket);
-    }
-
     public function mostrarTodasLasTransmisiones()
     {
-        $transmisiones = Stream::with([
+        $transmisiones = Stream::whereHas('video', function ($query) {
+            $query->where('estado', '!=', 'FINALIZADO');
+        })->with([
             'video' => function ($query) {
                 $query->select('id', 'titulo', 'descripcion', 'link', 'miniatura', 'duracion', 'canal_id');
                 $query->with(['canal' => function ($canalQuery) {
-                    $canalQuery->select('id', 'nombre', 'user_id'); 
-                    $canalQuery->with('user:id,foto');                            
+                    $canalQuery->select('id', 'nombre', 'user_id');
+                    $canalQuery->with('user:id,foto');
                 }]);
             },
         ])->get();
@@ -66,49 +38,11 @@ class StreamController extends Controller
         $host   = $this->obtenerHostMinio();
         $bucket = $this->obtenerBucket();
 
-        $transmisiones = $transmisiones->map(function ($transmision) use ($host, $bucket) {
-
-            if (! $transmision->video) {
-                return null;
-            }
-
-            $pattern              = "stream:{$transmision->id}:viewer:*";
-            $viewers              = count(Redis::keys($pattern));
-            $transmision->viewers = $viewers;
-            if ($transmision->video->miniatura) {
-                $transmision->video->miniatura = $this->obtenerUrlArchivo($transmision->video->miniatura, $host, $bucket);
-            }
-            $foto_url = null;
-            if (optional($transmision->video->canal)->user) {
-                $foto_ruta = $transmision->video->canal->user->foto;
-                $foto_url = $this->obtenerUrlFotoPerfil($foto_ruta, $host, $bucket); 
-            }
-            $canal_data = [
-                'id'         => optional($transmision->video->canal)->id,
-                'nombre'     => optional($transmision->video->canal)->nombre,
-                'user_id'    => optional(optional($transmision->video->canal)->user)->id,
-                'foto'       => $foto_url,
-            ];
-
-            return [
-                'id'                => $transmision->id,
-                'stream_programado' => $transmision->stream_programado,
-                'max_viewers'       => $transmision->max_viewers,
-                'total_viewers'     => $transmision->total_viewers,
-                'activo'            => $transmision->activo,
-                'viewers'           => $transmision->viewers,
-                'video_id'          => $transmision->video->id,
-                'titulo'            => $transmision->video->titulo,
-                'descripcion'       => $transmision->video->descripcion,
-                'link'              => $transmision->video->link,
-                'miniatura'         => $transmision->video->miniatura,
-                'duracion'          => $transmision->video->duracion,
-
-                'canal'             => $canal_data,
-            ];
+        $resultado = $transmisiones->map(function ($transmision) use ($host, $bucket) {
+            return $this->formatearTransmisionParaLista($transmision, $host, $bucket);
         })->filter()->values();
 
-        return response()->json($transmisiones);
+        return response()->json($resultado);
     }
 
     public function verTransmision($transmisionId)
@@ -118,105 +52,22 @@ class StreamController extends Controller
         if (! $transmision || ! $transmision->video) {
             return response()->json(['message' => 'Transmisión o video asociado no encontrado.'], 404);
         }
+
         $host   = $this->obtenerHostMinio();
         $bucket = $this->obtenerBucket();
+
         if ($transmision->video->miniatura) {
             $transmision->video->miniatura = $this->obtenerUrlArchivo($transmision->video->miniatura, $host, $bucket);
         }
+
         if ($transmision->video->canal && $transmision->video->canal->user) {
             $this->procesarFotoUsuario($transmision, $host, $bucket);
         }
+
         $urlHls    = $this->generarUrlHls($transmision);
-        $respuesta = [
-            'id'                => $transmision->id,
-            'stream_programado' => $transmision->stream_programado,
-            'max_viewers'       => $transmision->max_viewers,
-            'total_viewers'     => $transmision->total_viewers,
-            'activo'            => $transmision->activo,
-            'url_hls'           => $urlHls,
-            'video'             => [
-                'id'          => $transmision->video->id,
-                'titulo'      => $transmision->video->titulo,
-                'descripcion' => $transmision->video->descripcion,
-                'link'        => $transmision->video->link,
-                'miniatura'   => $transmision->video->miniatura,
-                'duracion'    => $transmision->video->duracion,
-                'etiquetas'   => $transmision->video->etiquetas,
-                'created_at'   => $transmision->video->created_at,
-            ],
-            'canal'             => [
-                'id'         => $transmision->video->canal->id,
-                'nombre'     => $transmision->video->canal->nombre,
-                'stream_key' => $transmision->video->canal->stream_key,
-                'user'       => $transmision->video->canal->user,
-            ],
-        ];
+        $respuesta = $this->formatearTransmisionDetalle($transmision, $urlHls);
+
         return response()->json($respuesta, 200, [], JSON_UNESCAPED_SLASHES);
-    }
-
-    private function obtenerTransmisionConRelaciones($transmisionId)
-    {
-        return Stream::with([
-            'video' => function ($query) {
-                $query->with([
-                    'canal' => function ($canalQuery) {
-                        $canalQuery->with('user:id,name,foto');
-                    },
-                    'etiquetas:id,nombre',
-                ]);
-            },
-        ])->findOrFail($transmisionId);
-    }
-
-    private function procesarFotoUsuario($transmision, $host, $bucket)
-    {
-        $usuario = $transmision->video->canal->user;
-        if ($usuario && $usuario->foto) {
-            $usuario->foto = $this->obtenerUrlArchivo($usuario->foto, $host, $bucket);
-        }
-    }
-
-    private function generarUrlHls($transmision)
-    {
-        if (! $transmision->activo || ! $transmision->video || ! $transmision->video->canal) {
-            return null;
-        }
-        return sprintf(
-            '%s%s/index.m3u8',
-            rtrim(env('STREAM_BASE_LINK'), '/') . '/',
-            $transmision->video->canal->stream_key
-        );
-    }
-
-    private function procesarDescripcion(string $texto): string
-    {
-        $texto = $this->linkify($texto);
-        $texto = Purify::clean($texto);
-        return $texto;
-    }
-
-    private function linkify(string $text): string
-    {
-        $pattern = '/\b(https?:\/\/[^\s<]+[^\s<.,;:!?")\]])/';
-        return preg_replace_callback($pattern, function ($matches) {
-            $url     = $matches[0];
-            $display = htmlspecialchars(substr($url, 0, 60)) . (strlen($url) > 60 ? '...' : '');
-            return '<a href="' . e($url) . '" target="_blank" rel="noopener noreferrer">' . $display . '</a>';
-        }, $text);
-    }
-
-    private function manejarExcepcionTransmision(QueryException $e, $canal)
-    {
-        if ($e->getCode() === '23000') {
-            $streamExistente = $canal->streams()->where('activo', true)->first();
-
-            return response()->json([
-                'stream'      => true,
-                'message'     => 'Ya existe una transmisión activa asociada a este canal. Finalízala antes de crear una nueva.',
-                'transmision' => $streamExistente,
-            ], 409);
-        }
-        throw $e;
     }
 
     public function guardarNuevaTransmision(Request $request, $canal_id)
@@ -242,7 +93,6 @@ class StreamController extends Controller
             if ($request->hasFile('miniatura')) {
                 $this->guardarMiniaturaStream($request, $stream, $video);
             }
-
         } catch (QueryException $e) {
             $video->delete();
             return $this->manejarExcepcionTransmision($e, $canal);
@@ -254,66 +104,6 @@ class StreamController extends Controller
             'message'     => 'Transmisión creada con éxito.',
             'transmision' => $stream,
         ], 201);
-    }
-
-    private function validarDatosTransmision(Request $request)
-    {
-        $request->validate([
-            'titulo'            => 'required|string|max:255',
-            'descripcion'       => 'required|string',
-            'etiquetas'         => 'nullable|array',
-            'miniatura'         => 'nullable|file|image|max:10240',
-            'stream_programado' => 'nullable|date',
-        ]);
-    }
-
-    private function crearVideoParaStream(Request $request, Canal $canal): Video
-    {
-        $descripcion = $this->procesarDescripcion($request->descripcion);
-
-        $video = new Video([
-            'titulo'      => $request->titulo,
-            'descripcion' => $descripcion,
-            'link'        => 'stream_' . Str::random(50),
-            'miniatura'   => 'miniatura_' . Str::random(50),
-            'duracion'    => 0,
-            'canal_id'    => $canal->id,
-            'acceso'      => 'publico',
-            'estado'      => 'PROGRAMADO',
-        ]);
-        $video->save();
-
-        return $video;
-    }
-
-    private function guardarMiniaturaStream(Request $request, Stream $stream, Video $video)
-    {
-        if (! $request->hasFile('miniatura')) {
-            return;
-        }
-
-        $miniatura       = $request->file('miniatura');
-        $folderPath      = "miniaturas/{$video->canal_id}";
-        $miniaturaNombre = uniqid() . '.jpg';
-
-        $rutaMiniatura = $miniatura->storeAs($folderPath, $miniaturaNombre, 's3');
-
-        $video->miniatura = $rutaMiniatura;
-        $video->save();
-    }
-
-    private function asignarEtiquetas(Request $request, $videoId)
-    {
-        $video             = Video::findOrFail($videoId);
-        $etiquetasIdsInput = $request->input('etiquetas', []);
-
-        $etiquetaIds = collect($etiquetasIdsInput)
-            ->filter(fn($id) => is_numeric($id) && (int) $id > 0)
-            ->map(fn($id) => (int) $id)
-            ->unique()
-            ->toArray();
-
-        $video->etiquetas()->sync($etiquetaIds);
     }
 
     public function actualizarDatosDeTransmision(Request $request, $transmisionId, $canalId)
@@ -330,7 +120,6 @@ class StreamController extends Controller
         $this->validarDatosActualizacion($request);
 
         $video = $stream->video;
-
         $descripcionProcesada = $this->procesarDescripcion($request->descripcion);
 
         $video->update([
@@ -356,67 +145,30 @@ class StreamController extends Controller
         ]);
     }
 
-    private function validarDatosActualizacion(Request $request)
-    {
-        $request->validate([
-            'titulo'            => 'required|string|max:255',
-            'descripcion'       => 'required|string',
-            'etiquetas'         => 'nullable|array',
-            'miniatura'         => 'nullable|file|image|max:10240',
-            'stream_programado' => 'nullable|date',
-        ]);
-    }
-
-    private function actualizarMiniatura(Request $request, Stream $stream, Video $video)
-    {
-        if (! $request->hasFile('miniatura')) {
-            return;
-        }
-        $miniatura = $request->file('miniatura');
-        if ($video->miniatura) {
-            $miniaturaNombre = basename($video->miniatura);
-        } else {
-            $miniaturaNombre = uniqid() . '.jpg';
-        }
-        $folderPath       = "miniaturas/{$video->canal_id}";
-        $rutaMiniatura    = $miniatura->storeAs($folderPath, $miniaturaNombre, 's3');
-        $video->miniatura = $rutaMiniatura;
-        $video->save();
-    }
-
     public function eliminarTransmision($transmisionId, $canalId)
     {
         $canal        = Canal::findOrFail($canalId);
         $stream       = Stream::with('video')->findOrFail($transmisionId);
+        
         $isAssociated = $canal->streams()->where('streams.id', $stream->id)->exists();
         if (! $isAssociated) {
             return response()->json(['message' => 'La transmisión no está asociada a este canal o no tienes permiso.'], 403);
         }
+        
         $video = $stream->video;
         if (! $video) {
             return response()->json(['message' => 'Error interno: La transmisión existe, pero no tiene un video asociado.'], 500);
         }
+        
         $this->eliminarArchivoStream($stream);
         if ($video->miniatura) {
             Storage::disk('s3')->delete($video->miniatura);
         }
+        
         $stream->delete();
         $video->delete();
+        
         return response()->json(['message' => 'Transmisión, Video y Miniatura eliminados con éxito.']);
-    }
-
-    private function eliminarArchivoStream(Stream $stream)
-    {
-        $linkIdentifier = optional($stream->video)->link;
-
-        if ($linkIdentifier) {
-            $rutaArchivoMp4 = "streams/{$linkIdentifier}.mp4";
-            if (Storage::disk('s3')->exists($rutaArchivoMp4)) {
-                Storage::disk('s3')->delete($rutaArchivoMp4);
-                return true;
-            }
-        }
-        return false;
     }
 
     public function listarTransmisionOBS(Request $request, $canalId)
@@ -507,7 +259,7 @@ class StreamController extends Controller
                 'success' => false,
                 'message' => 'Stream o Canal no encontrado.',
             ], 404);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
                 return response()->json([
                     'success' => false,
@@ -571,7 +323,7 @@ class StreamController extends Controller
                 'success' => false,
                 'message' => 'Stream o Canal no encontrado.',
             ], 404);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             if ($e->getMessage() === 'Acceso denegado: El usuario no es el dueño del canal.') {
                 return response()->json([
                     'success' => false,
@@ -584,22 +336,6 @@ class StreamController extends Controller
                 'message' => 'Error interno al desactivar el stream.',
             ], 500);
         }
-    }
-
-    private function autorizarYObtenerStream(int $streamId, $userId): Stream
-    {
-        $stream = Stream::with('video.canal')->findOrFail($streamId);
-        $canal  = optional(optional($stream->video)->canal);
-
-        if (! $canal) {
-            throw new \Exception('El stream no está vinculado a un canal válido.');
-        }
-
-        if ($canal->user_id !== (int) $userId) {
-            throw new \Exception('Acceso denegado: El usuario no es el dueño del canal.');
-        }
-
-        return $stream;
     }
 
     public function iniciarStream(Request $request)
@@ -618,6 +354,7 @@ class StreamController extends Controller
                 Log::warning("Publicación rechazada. Stream Key no encontrado: [{$streamKey}]");
                 return response('Not Found', 404);
             }
+            
             $streamActivo = Stream::whereHas('video', function ($query) use ($canal) {
                 $query->where('canal_id', $canal->id);
             })
@@ -629,6 +366,7 @@ class StreamController extends Controller
                 Log::warning("Publicación denegada. El canal [{$canal->id}] existe, pero no tiene un Stream activo (activo=true) en la plataforma.");
                 return response('Forbidden - Stream Not Activated', 403);
             }
+            
             $video = $streamActivo->video;
 
             if ($video && $video->estado !== 'DIRECTO') {
@@ -638,6 +376,7 @@ class StreamController extends Controller
                 Log::error("Stream activo [{$streamActivo->id}] sin registro de Video asociado. Publicación denegada.");
                 return response('Internal Error: Missing Video', 500);
             }
+            
             Log::info("Publicación de stream autorizada para Stream Key: [{$streamKey}] (Stream activo=true en DB)");
             return response('OK', 200);
 
@@ -685,8 +424,14 @@ class StreamController extends Controller
                 Log::info("Finalización automática ignorada: Stream ID {$streamId} ya estaba en estado {$video->estado}.");
                 return response('OK', 200);
             }
+            
+            $rutaRelativaVideo = 'videos/' . $canal->id . '/' . Str::random(40) . '.mp4';
 
-            $video->update(['estado' => 'FINALIZADO']);
+            $video->update([
+                'estado' => 'FINALIZADO',
+                'link'   => $rutaRelativaVideo
+            ]);
+            
             $stream->update(['activo' => false]);
 
             try {
@@ -706,7 +451,7 @@ class StreamController extends Controller
                     'video_id'      => $video->id,
                 ], 200);
 
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 if ($e->getMessage() === 'STREAM_MISSING_VIDEO') {
                     Log::warning("Stream finalizado. Advertencia VOD: Stream ID {$streamId} sin video asociado para procesar.");
                     return response('OK, VOD Warning', 200);
@@ -719,11 +464,487 @@ class StreamController extends Controller
         } catch (ModelNotFoundException $e) {
             Log::warning("Finalización automática fallida: Canal o Stream no encontrado para Stream Key [{$streamKey}].");
             return response('Not Found', 404);
-
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error("Error general al finalizar stream automático (Stream Key: {$streamKey}): " . $e->getMessage());
             return response('Internal Server Error', 500);
         }
+    }
+
+    public function entrarView(Request $request, $streamId)
+    {
+        $service = new StreamViewerService();
+        $count   = $service->añadirViewer((int) $streamId);
+
+        return response()->json([
+            'ok'      => true,
+            'viewers' => $count,
+        ]);
+    }
+
+    public function salirView(Request $request, $streamId)
+    {
+        $service = new StreamViewerService();
+        $count   = $service->eliminarViewer((int) $streamId);
+
+        return response()->json([
+            'ok'      => true,
+            'viewers' => $count,
+        ]);
+    }
+
+    public function hlsEvent(Request $request)
+    {
+        $event = $request->input('call');
+        $name  = $request->input('name');
+        $addr  = $request->input('addr', $request->ip());
+
+        if (! $name || ! in_array($event, ['on_play', 'on_play_done'])) {
+            return response('bad request', 400);
+        }
+
+        $streamKey = "live/{$name}";
+        $redisKey  = "viewers:{$streamKey}";
+        $setKey    = "viewers:set:{$streamKey}";
+
+        if ($event === 'on_play') {
+            if (Redis::sadd($setKey, $addr)) {
+                $current = Redis::incr($redisKey);
+                if ($current == 1) {
+                    Redis::setex("stream:active:{$name}", 3600, now()->toDateTimeString());
+                }
+            }
+            Redis::expire($redisKey, 300);
+            Redis::expire($setKey, 300);
+        }
+
+        if ($event === 'on_play_done') {
+            if (Redis::srem($setKey, $addr)) {
+                $current = Redis::decr($redisKey);
+            }
+            if (($current ?? 0) <= 0) {
+                Redis::del($redisKey, $setKey);
+            }
+        }
+
+        return response()->json([
+            'stream'  => $name,
+            'viewers' => max(0, Redis::get($redisKey) ?? 0),
+            'event'   => $event,
+            'ip'      => $addr,
+        ]);
+    }
+
+    public function status($key)
+    {
+        $base     = "/mnt/hls/{$key}";
+        $playlist = $base . '/index.m3u8';
+
+        if (! file_exists($playlist)) {
+            return response()->json([
+                'online'  => false,
+                'message' => 'Stream not found or offline',
+            ]);
+        }
+
+        $content = file_get_contents($playlist);
+        preg_match_all('/(\d+)\.ts/', $content, $matches);
+
+        if (empty($matches[1])) {
+            return response()->json([
+                'online'   => true,
+                'bitrate'  => null,
+                'segments' => 0,
+                'message'  => 'Waiting for segments...',
+            ]);
+        }
+
+        $lastSegment = max($matches[1]);
+        $segmentPath = "{$base}/{$lastSegment}.ts";
+
+        $fileSizeBytes = file_exists($segmentPath) ? filesize($segmentPath) : 0;
+        $duration      = 3;
+        $bitrateKbps   = $duration > 0 ? round(($fileSizeBytes * 8 / 1024) / $duration) : null;
+
+        return response()->json([
+            'online'          => true,
+            'segments'        => count($matches[1]),
+            'current_segment' => $lastSegment,
+            'bitrate_kbps'    => $bitrateKbps,
+            'playlist'        => "/hls/{$key}/index.m3u8",
+        ]);
+    }
+
+    public function metricsHls($key)
+    {
+        $base         = "/mnt/hls/{$key}";
+        $playlistPath = "{$base}/index.m3u8";
+
+        if (! file_exists($playlistPath)) {
+            return response()->json([
+                'online'  => false,
+                'message' => 'Stream offline',
+            ]);
+        }
+
+        $content = file_get_contents($playlistPath);
+        preg_match_all('/(.*\.ts)/', $content, $matches);
+
+        if (empty($matches[1])) {
+            return response()->json([
+                'online'   => true,
+                'segments' => 0,
+                'message'  => 'Waiting for segments...',
+            ]);
+        }
+
+        $segments    = $matches[1];
+        $lastSegment = end($segments);
+        $segmentPath = "{$base}/{$lastSegment}";
+
+        $size        = filesize($segmentPath);
+        $durationSec = 3;
+        $bitrateKbps = round(($size * 8 / 1024) / $durationSec);
+
+        $ffprobe  = "ffprobe -v quiet -print_format json -show_streams \"$segmentPath\"";
+        $metaJson = shell_exec($ffprobe);
+        $meta     = json_decode($metaJson, true);
+
+        $videoStream = collect($meta['streams'])->firstWhere('codec_type', 'video');
+
+        $width  = $videoStream['width'] ?? null;
+        $height = $videoStream['height'] ?? null;
+        $fps    = null;
+
+        if (isset($videoStream['r_frame_rate'])) {
+            list($num, $den) = explode('/', $videoStream['r_frame_rate']);
+            $fps             = round($num / $den);
+        }
+
+        $latencySeconds     = count($segments) * $durationSec;
+        $playlistAgeSeconds = time() - filemtime($playlistPath);
+
+        return response()->json([
+            'online'          => true,
+            'segments'        => count($segments),
+            'current_segment' => $lastSegment,
+            'bitrate_kbps'    => $bitrateKbps,
+            'resolution'      => "{$width}x{$height}",
+            'fps'             => $fps,
+            'latency_seconds' => $latencySeconds,
+            'playlist_age'    => $playlistAgeSeconds,
+            'playlist'        => "/hls/{$key}/index.m3u8",
+        ]);
+    }
+
+    public function obtenerViewers($streamId)
+    {
+        $redisKey = "stream:{$streamId}:viewers";
+        $viewers  = (int) Redis::get($redisKey) ?: 0;
+
+        return response()->json(['viewers' => $viewers]);
+    }
+
+    public function heartbeat(Request $request, $streamId)
+    {
+        $userId = $request->query('user_id');
+
+        $service = new StreamViewerService();
+        $count   = $service->heartbeat($streamId, $userId);
+
+        broadcast(new ViewerStream($streamId, [
+            'type'  => 'viewer_count',
+            'count' => $count,
+        ]));
+
+        return response()->json(['ok' => true]);
+    }
+
+    // =========================================================================
+    // MÉTODOS PRIVADOS Y DE UTILIDAD
+    // =========================================================================
+
+    private function obtenerHostMinio()
+    {
+        return str_replace('minio', env('BLITZVIDEO_HOST'), env('AWS_ENDPOINT')) . '/';
+    }
+
+    private function obtenerBucket()
+    {
+        return env('AWS_BUCKET') . '/';
+    }
+
+    private function obtenerUrlArchivo($rutaRelativa, $host, $bucket)
+    {
+        if (! $rutaRelativa) {
+            return null;
+        }
+        if (str_starts_with($rutaRelativa, $host . $bucket)) {
+            return $rutaRelativa;
+        }
+        if (filter_var($rutaRelativa, FILTER_VALIDATE_URL)) {
+            return $rutaRelativa;
+        }
+        return $host . $bucket . $rutaRelativa;
+    }
+
+    private function obtenerUrlFotoPerfil(?string $rutaFoto, string $host, string $bucket)
+    {
+        if (! $rutaFoto) {
+            return $this->obtenerUrlArchivo('users/default_profile.png', $host, $bucket);
+        }
+        return $this->obtenerUrlArchivo($rutaFoto, $host, $bucket);
+    }
+
+    private function formatearTransmisionParaLista($transmision, $host, $bucket)
+    {
+        if (! $transmision->video) {
+            return null;
+        }
+
+        $pattern              = "stream:{$transmision->id}:viewer:*";
+        $transmision->viewers = count(Redis::keys($pattern));
+
+        if ($transmision->video->miniatura) {
+            $transmision->video->miniatura = $this->obtenerUrlArchivo($transmision->video->miniatura, $host, $bucket);
+        }
+
+        $fotoUrl = null;
+        if (optional($transmision->video->canal)->user) {
+            $fotoRuta = $transmision->video->canal->user->foto;
+            $fotoUrl  = $this->obtenerUrlFotoPerfil($fotoRuta, $host, $bucket);
+        }
+
+        return [
+            'id'                => $transmision->id,
+            'stream_programado' => $transmision->stream_programado,
+            'max_viewers'       => $transmision->max_viewers,
+            'total_viewers'     => $transmision->total_viewers,
+            'activo'            => $transmision->activo,
+            'viewers'           => $transmision->viewers,
+            'video_id'          => $transmision->video->id,
+            'titulo'            => $transmision->video->titulo,
+            'descripcion'       => $transmision->video->descripcion,
+            'link'              => $transmision->video->link,
+            'miniatura'         => $transmision->video->miniatura,
+            'duracion'          => $transmision->video->duracion,
+            'canal'             => [
+                'id'      => optional($transmision->video->canal)->id,
+                'nombre'  => optional($transmision->video->canal)->nombre,
+                'user_id' => optional(optional($transmision->video->canal)->user)->id,
+                'foto'    => $fotoUrl,
+            ],
+        ];
+    }
+
+    private function obtenerTransmisionConRelaciones($transmisionId)
+    {
+        return Stream::with([
+            'video' => function ($query) {
+                $query->with([
+                    'canal' => function ($canalQuery) {
+                        $canalQuery->with('user:id,name,foto');
+                    },
+                    'etiquetas:id,nombre',
+                ]);
+            },
+        ])->findOrFail($transmisionId);
+    }
+
+    private function formatearTransmisionDetalle($transmision, $urlHls)
+    {
+        return [
+            'id'                => $transmision->id,
+            'stream_programado' => $transmision->stream_programado,
+            'max_viewers'       => $transmision->max_viewers,
+            'total_viewers'     => $transmision->total_viewers,
+            'activo'            => $transmision->activo,
+            'url_hls'           => $urlHls,
+            'video'             => [
+                'id'          => $transmision->video->id,
+                'titulo'      => $transmision->video->titulo,
+                'descripcion' => $transmision->video->descripcion,
+                'link'        => $transmision->video->link,
+                'miniatura'   => $transmision->video->miniatura,
+                'duracion'    => $transmision->video->duracion,
+                'etiquetas'   => $transmision->video->etiquetas,
+                'created_at'  => $transmision->video->created_at,
+            ],
+            'canal'             => [
+                'id'         => $transmision->video->canal->id,
+                'nombre'     => $transmision->video->canal->nombre,
+                'stream_key' => $transmision->video->canal->stream_key,
+                'user'       => $transmision->video->canal->user,
+            ],
+        ];
+    }
+
+    private function procesarFotoUsuario($transmision, $host, $bucket)
+    {
+        $usuario = $transmision->video->canal->user;
+        if ($usuario && $usuario->foto) {
+            $usuario->foto = $this->obtenerUrlArchivo($usuario->foto, $host, $bucket);
+        }
+    }
+
+    private function generarUrlHls($transmision)
+    {
+        if (! $transmision->activo || ! $transmision->video || ! $transmision->video->canal) {
+            return null;
+        }
+        return sprintf(
+            '%s%s/index.m3u8',
+            rtrim(env('STREAM_BASE_LINK'), '/') . '/',
+            $transmision->video->canal->stream_key
+        );
+    }
+
+    private function procesarDescripcion(string $texto): string
+    {
+        $texto = $this->linkify($texto);
+        $texto = Purify::clean($texto);
+        return $texto;
+    }
+
+    private function linkify(string $text): string
+    {
+        $pattern = '/\b(https?:\/\/[^\s<]+[^\s<.,;:!?")\]])/';
+        return preg_replace_callback($pattern, function ($matches) {
+            $url     = $matches[0];
+            $display = htmlspecialchars(substr($url, 0, 60)) . (strlen($url) > 60 ? '...' : '');
+            return '<a href="' . e($url) . '" target="_blank" rel="noopener noreferrer">' . $display . '</a>';
+        }, $text);
+    }
+
+    private function manejarExcepcionTransmision(QueryException $e, $canal)
+    {
+        if ($e->getCode() === '23000') {
+            $streamExistente = $canal->streams()->where('activo', true)->first();
+
+            return response()->json([
+                'stream'      => true,
+                'message'     => 'Ya existe una transmisión activa asociada a este canal. Finalízala antes de crear una nueva.',
+                'transmision' => $streamExistente,
+            ], 409);
+        }
+        throw $e;
+    }
+
+    private function validarDatosTransmision(Request $request)
+    {
+        $request->validate([
+            'titulo'            => 'required|string|max:255',
+            'descripcion'       => 'required|string',
+            'etiquetas'         => 'nullable|array',
+            'miniatura'         => 'nullable|file|image|max:10240',
+            'stream_programado' => 'nullable|date',
+        ]);
+    }
+
+    private function crearVideoParaStream(Request $request, Canal $canal): Video
+    {
+        $descripcion = $this->procesarDescripcion($request->descripcion);
+
+        $video = new Video([
+            'titulo'      => $request->titulo,
+            'descripcion' => $descripcion,
+            'link'        => 'stream_' . Str::random(50),
+            'miniatura'   => 'miniatura_' . Str::random(50),
+            'duracion'    => 0,
+            'canal_id'    => $canal->id,
+            'acceso'      => 'publico',
+            'estado'      => 'PROGRAMADO',
+        ]);
+        $video->save();
+
+        return $video;
+    }
+
+    private function guardarMiniaturaStream(Request $request, Stream $stream, Video $video)
+    {
+        if (! $request->hasFile('miniatura')) {
+            return;
+        }
+
+        $miniatura       = $request->file('miniatura');
+        $folderPath      = "miniaturas/{$video->canal_id}";
+        $miniaturaNombre = uniqid() . '.jpg';
+
+        $rutaMiniatura = $miniatura->storeAs($folderPath, $miniaturaNombre, 's3');
+
+        $video->miniatura = $rutaMiniatura;
+        $video->save();
+    }
+
+    private function asignarEtiquetas(Request $request, $videoId)
+    {
+        $video             = Video::findOrFail($videoId);
+        $etiquetasIdsInput = $request->input('etiquetas', []);
+
+        $etiquetaIds = collect($etiquetasIdsInput)
+            ->filter(fn($id) => is_numeric($id) && (int) $id > 0)
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->toArray();
+
+        $video->etiquetas()->sync($etiquetaIds);
+    }
+
+    private function validarDatosActualizacion(Request $request)
+    {
+        $request->validate([
+            'titulo'            => 'required|string|max:255',
+            'descripcion'       => 'required|string',
+            'etiquetas'         => 'nullable|array',
+            'miniatura'         => 'nullable|file|image|max:10240',
+            'stream_programado' => 'nullable|date',
+        ]);
+    }
+
+    private function actualizarMiniatura(Request $request, Stream $stream, Video $video)
+    {
+        if (! $request->hasFile('miniatura')) {
+            return;
+        }
+        $miniatura = $request->file('miniatura');
+        if ($video->miniatura) {
+            $miniaturaNombre = basename($video->miniatura);
+        } else {
+            $miniaturaNombre = uniqid() . '.jpg';
+        }
+        $folderPath       = "miniaturas/{$video->canal_id}";
+        $rutaMiniatura    = $miniatura->storeAs($folderPath, $miniaturaNombre, 's3');
+        $video->miniatura = $rutaMiniatura;
+        $video->save();
+    }
+
+    private function eliminarArchivoStream(Stream $stream)
+    {
+        $linkIdentifier = optional($stream->video)->link;
+
+        if ($linkIdentifier) {
+            $rutaArchivoMp4 = "streams/{$linkIdentifier}.mp4";
+            if (Storage::disk('s3')->exists($rutaArchivoMp4)) {
+                Storage::disk('s3')->delete($rutaArchivoMp4);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function autorizarYObtenerStream(int $streamId, $userId): Stream
+    {
+        $stream = Stream::with('video.canal')->findOrFail($streamId);
+        $canal  = optional(optional($stream->video)->canal);
+
+        if (! $canal) {
+            throw new Exception('El stream no está vinculado a un canal válido.');
+        }
+
+        if ($canal->user_id !== (int) $userId) {
+            throw new Exception('Acceso denegado: El usuario no es el dueño del canal.');
+        }
+
+        return $stream;
     }
 
     private function subirVideoDeStream($streamId): array
@@ -731,7 +952,7 @@ class StreamController extends Controller
         $stream = $this->obtenerStreamPorId($streamId);
 
         if (! $stream->video) {
-            throw new \Exception('STREAM_MISSING_VIDEO');
+            throw new Exception('STREAM_MISSING_VIDEO');
         }
 
         $archivoFLV = $this->obtenerArchivoFLVDesdeMinio($stream);
@@ -749,7 +970,7 @@ class StreamController extends Controller
     {
         $stream = Stream::with('video')->find($streamId);
         if (! $stream) {
-            throw new \Exception('No se encontró un stream con el ID proporcionado.');
+            throw new Exception('No se encontró un stream con el ID proporcionado.');
         }
         return $stream;
     }
@@ -760,13 +981,13 @@ class StreamController extends Controller
         $canal      = optional(optional($stream->video)->canal);
 
         if (! $canal) {
-            throw new \Exception('El stream no está vinculado a un canal válido (falta Video o Canal).');
+            throw new Exception('El stream no está vinculado a un canal válido (falta Video o Canal).');
         }
 
         $streamKey = $canal->stream_key;
 
         if (! $streamKey) {
-            throw new \Exception('No se pudo encontrar el stream_key del canal para localizar el archivo FLV.');
+            throw new Exception('No se pudo encontrar el stream_key del canal para localizar el archivo FLV.');
         }
         $patron            = '/' . preg_quote($streamKey . '-', '/') . '\d+\.flv$/';
         $archivoEncontrado = collect(Storage::disk('s3')->allFiles($directorio))
@@ -781,7 +1002,7 @@ class StreamController extends Controller
         if (Storage::disk('s3')->exists($rutaSimple)) {
             return $rutaSimple;
         }
-        throw new \Exception("Archivo FLV no encontrado en MinIO en la ruta esperada. Patrón buscado: [{$streamKey}-<timestamp>.flv]");
+        throw new Exception("Archivo FLV no encontrado en MinIO en la ruta esperada. Patrón buscado: [{$streamKey}-<timestamp>.flv]");
     }
 
     private function convertirFLVaMP4(string $rutaFLV): string
@@ -803,7 +1024,7 @@ class StreamController extends Controller
             'SaveAs' => $rutaLocal,
         ]);
         if (! file_exists($rutaLocal)) {
-            throw new \Exception("Error al descargar el archivo desde MinIO: {$rutaRemota}");
+            throw new Exception("Error al descargar el archivo desde MinIO: {$rutaRemota}");
         }
         return $rutaLocal;
     }
@@ -826,7 +1047,7 @@ class StreamController extends Controller
         $this->ejecutarComandoFFMpeg($comando);
 
         if (! file_exists($rutaSalida)) {
-            throw new \Exception("Error al generar el archivo convertido: {$rutaSalida}");
+            throw new Exception("Error al generar el archivo convertido: {$rutaSalida}");
         }
         return $rutaSalida;
     }
@@ -839,7 +1060,7 @@ class StreamController extends Controller
             $proceso->mustRun();
         } catch (ProcessFailedException $e) {
             Log::error('Error al ejecutar FFMpeg', ['error' => $e->getMessage(), 'output' => $proceso->getErrorOutput()]);
-            throw new \Exception('Error al convertir el archivo con FFMpeg.');
+            throw new Exception('Error al convertir el archivo con FFMpeg.');
         }
     }
 
@@ -884,7 +1105,7 @@ class StreamController extends Controller
     {
         $video = $stream->video;
         if (! $video) {
-            throw new \Exception('No se pudo encontrar el registro de Video para actualizar.');
+            throw new Exception('No se pudo encontrar el registro de Video para actualizar.');
         }
 
         $duracion = $this->obtenerDuracionDeVideo($rutaMP4);
@@ -902,13 +1123,13 @@ class StreamController extends Controller
     private function obtenerDuracionDeVideo(string $rutaArchivo): int
     {
         if (! file_exists($rutaArchivo)) {
-            throw new \Exception('Archivo no encontrado para calcular la duración.');
+            throw new Exception('Archivo no encontrado para calcular la duración.');
         }
         $ffprobe  = \FFMpeg\FFProbe::create();
         $duracion = $ffprobe->format($rutaArchivo)->get('duration');
 
         if ($duracion === null) {
-            throw new \Exception('No se pudo obtener la duración del video.');
+            throw new Exception('No se pudo obtener la duración del video.');
         }
         return (int) floor($duracion);
     }
@@ -919,208 +1140,4 @@ class StreamController extends Controller
             mkdir($directorio, 0755, true);
         }
     }
-
-    public function entrarView(Request $request, $streamId)
-    {
-        $service = new StreamViewerService();
-        $count   = $service->añadirViewer((int) $streamId);
-
-        return response()->json([
-            'ok'      => true,
-            'viewers' => $count,
-        ]);
-    }
-
-    public function salirView(Request $request, $streamId)
-    {
-        $service = new StreamViewerService();
-        $count   = $service->eliminarViewer((int) $streamId);
-
-        return response()->json([
-            'ok'      => true,
-            'viewers' => $count,
-        ]);
-    }
-
-    public function hlsEvent(Request $request)
-    {
-        $event = $request->input('call');
-        $name  = $request->input('name');
-        $addr  = $request->input('addr', $request->ip());
-
-        if (! $name || ! in_array($event, ['on_play', 'on_play_done'])) {
-            return response('bad request', 400);
-        }
-
-        $streamKey = "live/{$name}";
-        $redisKey  = "viewers:{$streamKey}";
-        $setKey    = "viewers:set:{$streamKey}";
-
-        if ($event === 'on_play') {
-            $added = Redis::sadd($setKey, $addr);
-
-            if ($added) {
-                $current = Redis::incr($redisKey);
-
-                if ($current == 1) {
-                    Redis::setex("stream:active:{$name}", 3600, now()->toDateTimeString());
-                }
-            }
-
-            Redis::expire($redisKey, 300);
-            Redis::expire($setKey, 300);
-        }
-
-        if ($event === 'on_play_done') {
-            $removed = Redis::srem($setKey, $addr);
-
-            if ($removed) {
-                $current = Redis::decr($redisKey);
-            }
-
-            if (($current ?? 0) <= 0) {
-                Redis::del($redisKey, $setKey);
-            }
-        }
-
-        return response()->json([
-            'stream'  => $name,
-            'viewers' => max(0, Redis::get($redisKey) ?? 0),
-            'event'   => $event,
-            'ip'      => $addr,
-        ]);
-    }
-
-    public function status($key)
-    {
-        $base = '/mnt/hls/' . $key;
-
-        $playlist = $base . '/index.m3u8';
-
-        if (! file_exists($playlist)) {
-            return response()->json([
-                'online'  => false,
-                'message' => 'Stream not found or offline',
-            ]);
-        }
-
-        $content = file_get_contents($playlist);
-
-        preg_match_all('/(\d+)\.ts/', $content, $matches);
-
-        if (empty($matches[1])) {
-            return response()->json([
-                'online'   => true,
-                'bitrate'  => null,
-                'segments' => 0,
-                'message'  => 'Waiting for segments...',
-            ]);
-        }
-
-        $lastSegment = max($matches[1]);
-        $segmentPath = $base . '/' . $lastSegment . '.ts';
-
-        $fileSizeBytes = file_exists($segmentPath) ? filesize($segmentPath) : 0;
-        $duration      = 3;
-
-        $bitrateKbps = $duration > 0
-            ? round(($fileSizeBytes * 8 / 1024) / $duration)
-            : null;
-
-        return response()->json([
-            'online'          => true,
-            'segments'        => count($matches[1]),
-            'current_segment' => $lastSegment,
-            'bitrate_kbps'    => $bitrateKbps,
-            'playlist'        => "/hls/{$key}/index.m3u8",
-        ]);
-    }
-
-    public function metricsHls($key)
-    {
-        $base         = "/mnt/hls/{$key}";
-        $playlistPath = "{$base}/index.m3u8";
-
-        if (! file_exists($playlistPath)) {
-            return response()->json([
-                'online'  => false,
-                'message' => 'Stream offline',
-            ]);
-        }
-
-        $content = file_get_contents($playlistPath);
-
-        preg_match_all('/(.*\.ts)/', $content, $matches);
-
-        if (empty($matches[1])) {
-            return response()->json([
-                'online'   => true,
-                'segments' => 0,
-                'message'  => 'Waiting for segments...',
-            ]);
-        }
-
-        $segments    = $matches[1];
-        $lastSegment = end($segments);
-        $segmentPath = "{$base}/{$lastSegment}";
-
-        $size        = filesize($segmentPath);
-        $durationSec = 3;
-        $bitrateKbps = round(($size * 8 / 1024) / $durationSec);
-
-        $ffprobe  = "ffprobe -v quiet -print_format json -show_streams \"$segmentPath\"";
-        $metaJson = shell_exec($ffprobe);
-        $meta     = json_decode($metaJson, true);
-
-        $videoStream = collect($meta['streams'])->firstWhere('codec_type', 'video');
-
-        $width  = $videoStream['width'] ?? null;
-        $height = $videoStream['height'] ?? null;
-        $fps    = null;
-
-        if (isset($videoStream['r_frame_rate'])) {
-            list($num, $den) = explode('/', $videoStream['r_frame_rate']);
-            $fps             = round($num / $den);
-        }
-
-        $latencySeconds = count($segments) * $durationSec;
-
-        $playlistAgeSeconds = time() - filemtime($playlistPath);
-
-        return response()->json([
-            'online'          => true,
-            'segments'        => count($segments),
-            'current_segment' => $lastSegment,
-            'bitrate_kbps'    => $bitrateKbps,
-            'resolution'      => "{$width}x{$height}",
-            'fps' => $fps,
-            'latency_seconds' => $latencySeconds,
-            'playlist_age' => $playlistAgeSeconds,
-            'playlist' => "/hls/{$key}/index.m3u8",
-        ]);
-    }
-
-    public function obtenerViewers($streamId)
-    {
-        $redisKey = "stream:{$streamId}:viewers";
-        $viewers  = (int) Redis::get($redisKey) ?: 0;
-
-        return response()->json(['viewers' => $viewers]);
-    }
-
-    public function heartbeat(Request $request, $streamId)
-    {
-        $userId = $request->query('user_id');
-
-        $service = new StreamViewerService();
-        $count   = $service->heartbeat($streamId, $userId);
-
-        broadcast(new ViewerStream($streamId, [
-            'type'  => 'viewer_count',
-            'count' => $count,
-        ]));
-
-        return response()->json(['ok' => true]);
-    }
-
 }
