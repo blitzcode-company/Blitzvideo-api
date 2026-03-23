@@ -990,13 +990,22 @@ class StreamController extends Controller
             throw new Exception('No se pudo encontrar el stream_key del canal para localizar el archivo FLV.');
         }
         $patron            = '/' . preg_quote($streamKey . '-', '/') . '\d+\.flv$/';
-        $archivoEncontrado = collect(Storage::disk('s3')->allFiles($directorio))
-            ->first(function ($archivo) use ($patron) {
+        $archivosCoincidentes = collect(Storage::disk('s3')->allFiles($directorio))
+            ->filter(function ($archivo) use ($patron) {
                 return preg_match($patron, $archivo);
-            });
+            })
+            ->sort()
+            ->values();
 
-        if ($archivoEncontrado) {
-            return $archivoEncontrado;
+        if ($archivosCoincidentes->isNotEmpty()) {
+            $archivoMasReciente = $archivosCoincidentes->last();
+
+            if ($archivosCoincidentes->count() > 1) {
+                $archivosViejos = $archivosCoincidentes->slice(0, -1);
+                Storage::disk('s3')->delete($archivosViejos->all());
+            }
+
+            return $archivoMasReciente;
         }
         $rutaSimple = "{$directorio}/{$streamKey}.flv";
         if (Storage::disk('s3')->exists($rutaSimple)) {
