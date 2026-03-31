@@ -6,6 +6,7 @@ use App\Events\ViewerStream;
 use App\Models\Canal;
 use App\Models\Stream;
 use App\Models\Video;
+use App\Models\User;
 use App\Services\StreamViewerService;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -470,6 +471,56 @@ class StreamController extends Controller
         }
     }
 
+       public function obtenerStreamActivo(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        try {
+            $userId = $request->input('user_id');
+            Log::info("Buscando stream activo para user_id: {$userId}");
+            
+            $canal = Canal::where('user_id', $userId)->first();
+            Log::info("Canal encontrado: " . ($canal ? $canal->id : 'NULL'));
+            
+            if (!$canal) {
+                return response()->json(['stream' => null], 200);
+            }
+
+            $streamActivo = Stream::whereHas('video', function ($query) use ($canal) {
+                $query->where('canal_id', $canal->id)
+                      ->where('activo', 1);
+            })
+            ->with(['video' => function ($query) {
+                $query->select('id', 'titulo', 'estado', 'canal_id');
+            }])
+            ->orderByDesc('created_at')
+            ->first();
+
+            Log::info("Stream activo encontrado: " . ($streamActivo ? $streamActivo->id : 'NULL'));
+
+            if (!$streamActivo) {
+                return response()->json(['stream' => null], 200);
+            }
+
+            return response()->json([
+                'stream' => [
+                    'id' => $streamActivo->id,
+                    'titulo' => $streamActivo->video?->titulo ?? 'Stream Sin Título',
+                    'estado' => $streamActivo->video?->estado,
+                    'activo' => $streamActivo->activo,
+                    'created_at' => $streamActivo->created_at,
+                ]
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Error al obtener stream activo: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            return response()->json(['message' => 'Error al obtener stream activo'], 500);
+        }
+    }
+
     public function entrarView(Request $request, $streamId)
     {
         $service = new StreamViewerService();
@@ -659,9 +710,6 @@ class StreamController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    // =========================================================================
-    // MÉTODOS PRIVADOS Y DE UTILIDAD
-    // =========================================================================
 
     private function obtenerHostMinio()
     {
@@ -975,7 +1023,7 @@ class StreamController extends Controller
         return $stream;
     }
 
-    private function obtenerArchivoFLVDesdeMinio(Stream $stream): string
+private function obtenerArchivoFLVDesdeMinio(Stream $stream): string
     {
         $directorio = 'streams';
         $canal      = optional(optional($stream->video)->canal);
@@ -1149,4 +1197,9 @@ class StreamController extends Controller
             mkdir($directorio, 0755, true);
         }
     }
+
+    
+   
+    
+ 
 }

@@ -84,6 +84,7 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('streams')->group(function () {
         Route::get('/', [StreamController::class, 'mostrarTodasLasTransmisiones']);
+        Route::get('/activo/usuario', [StreamController::class, 'obtenerStreamActivo']);
         Route::get('/{transmisionId}', [StreamController::class, 'verTransmision']);
         Route::get('/{streamId}/viewers', [StreamController::class, 'obtenerViewers']);
         Route::post('/hls-event', [StreamController::class, 'hlsEvent']);
