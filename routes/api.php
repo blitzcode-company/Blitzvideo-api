@@ -177,13 +177,11 @@ Route::prefix('v1')->middleware('auth.api')->group(function () {
         Route::post('/vistas-periodo', [CreadoresController::class, 'vistasPorPeriodo']);
         Route::post('/videos-top', [CreadoresController::class, 'videosTopRendimiento']);
         Route::post('/audiencia', [CreadoresController::class, 'audiencia']);
-        Route::post('/paises', [CreadoresController::class, 'distribucionPaises']);
         Route::post('/suscriptores', [CreadoresController::class, 'datosSuscriptores']);
         Route::post('/vistas', [CreadoresController::class, 'historialVistas']);
         Route::post('/tiempo-promedio', [CreadoresController::class, 'tiempoPromedioVisualizacion']);
         Route::post('/tasa-completitud', [CreadoresController::class, 'tasaCompletitud']);
         Route::post('/engagement', [CreadoresController::class, 'engagement']);
-        Route::post('/ingresos', [CreadoresController::class, 'ingresos']);
     });
 
     Route::prefix('canal')->group(function () {

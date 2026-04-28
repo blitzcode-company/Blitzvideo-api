@@ -22,7 +22,8 @@ class DatabaseSeeder extends Seeder
             PublicidadSeeder::class,
             VisitaSeeder::class,
             NotificacionSeeder::class,
-            StreamSeeder::class
+            StreamSeeder::class,
+            PuntuaSeeder::class
         ]);
     }
 }
