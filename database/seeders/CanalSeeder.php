@@ -12,6 +12,7 @@ class CanalSeeder extends Seeder
     {
         $users = User::all();
 
+        
         foreach ($users as $user) {
             Canal::create([
                 'nombre' => 'Canal de ' . $user->name,
