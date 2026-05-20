@@ -78,6 +78,7 @@ class VideoController extends Controller
             'canal:id,nombre,descripcion,user_id',
             'canal.user:id,name,foto,email',
             'etiquetas:id,nombre',
+            'stream:id,video_id,started_at', 
         ];
     }
 

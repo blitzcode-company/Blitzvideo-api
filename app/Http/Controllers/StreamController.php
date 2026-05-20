@@ -373,22 +373,15 @@ class StreamController extends Controller
 
             if ($video && $video->estado !== 'DIRECTO') {
                 $video->update(['estado' => 'DIRECTO']);
-
-                Log::info('Disparando broadcast StreamStatusChanged', [
-                'stream_id' => $streamActivo->id,
-                'canal_id' => $canal->id,
-                'estado' => 'DIRECTO'
-            ]);
-
-
+                
+            $streamActivo->update(['started_at' => now()]);
+             Log::info('started_at guardado: ' . now() . ' para stream ' . $streamActivo->id);
+                
             broadcast(new StreamStatusChanged($streamActivo->id, $canal->id, 'DIRECTO'));
-            Log::info("Estado del Video ID [{$video->id}] actualizado a DIRECTO.");
-
-
-                Log::info("Estado del Video ID [{$video->id}] actualizado a DIRECTO por la conexión RTMP.");
             } elseif (! $video) {
-                Log::error("Stream activo [{$streamActivo->id}] sin registro de Video asociado. Publicación denegada.");
                 return response('Internal Error: Missing Video', 500);
+                    Log::info('No se actualizó started_at. Estado actual del video: ' . $video?->estado);
+
             }
             
             Log::info("Publicación de stream autorizada para Stream Key: [{$streamKey}] (Stream activo=true en DB)");
@@ -404,8 +397,8 @@ class StreamController extends Controller
     {
         $streamKey = $request->input('name');
 
-        if (! $streamKey) {
-            Log::error('Finalización automática fallida: No se recibió la stream key (name).');
+        if (!$streamKey) {
+            Log::error('Finalización automática fallida: No se recibió la stream key.');
             return response('Error: Stream Key Missing', 400);
         }
 
@@ -414,76 +407,85 @@ class StreamController extends Controller
 
             $stream = Stream::whereHas('video', function ($query) use ($canal) {
                 $query->where('canal_id', $canal->id)->where('estado', 'DIRECTO');
-            })
-                ->where('activo', true)
-                ->with('video')
-                ->first();
+            })->where('activo', true)->with('video')->first();
 
-            if (! $stream) {
-                Log::info("Finalización automática ignorada: Stream Key [{$streamKey}] sin stream ACTIVO/DIRECTO encontrado.");
+            if (!$stream) {
+                Log::info("Finalización ignorada: sin stream ACTIVO/DIRECTO para [{$streamKey}].");
                 return response('OK', 200);
             }
 
-            $video    = $stream->video;
-            $streamId = $stream->id;
+            $video = $stream->video;
 
-            if (! $video) {
-                throw new ModelNotFoundException("Stream ID {$streamId} sin video asociado.");
+            if (!$video) {
+                return response('Internal Error: Missing Video', 500);
             }
 
             if ($video->estado !== 'DIRECTO') {
-                if ($stream->activo === true) {
-                    $stream->update(['activo' => false]);
-                }
-                Log::info("Finalización automática ignorada: Stream ID {$streamId} ya estaba en estado {$video->estado}.");
+                $stream->update(['activo' => false]);
                 return response('OK', 200);
             }
-            
-            $rutaRelativaVideo = 'videos/' . $canal->id . '/' . Str::random(40) . '.mp4';
 
-            $video->update([
-                'estado' => 'FINALIZADO',
-                'link'   => $rutaRelativaVideo
-            ]);
-            
+            $video->update(['estado' => 'FINALIZADO']);
             $stream->update(['activo' => false]);
 
-            broadcast(new StreamStatusChanged($streamId, $canal->id, 'FINALIZADO'));
+            broadcast(new StreamStatusChanged($stream->id, $canal->id, 'FINALIZADO'));
 
+            Log::info("Stream [{$stream->id}] finalizado. Esperando on_record_done para procesar VOD.");
 
-            try {
-                $vodData = $this->subirVideoDeStream($streamId);
-
-                $host   = $this->obtenerHostMinio();
-                $bucket = $this->obtenerBucket();
-                $video  = $vodData['video'];
-                $rutaS3 = $vodData['rutaS3'];
-
-                Log::info("Finalización y VOD exitoso para Stream Key: [{$streamKey}] (Stream ID: {$streamId})");
-
-                return response()->json([
-                    'message'       => 'Stream finalizado y video VOD subido correctamente.',
-                    'video_url'     => $this->obtenerUrlArchivo($rutaS3, $host, $bucket),
-                    'miniatura_url' => $this->obtenerUrlArchivo($video->miniatura, $host, $bucket),
-                    'video_id'      => $video->id,
-                ], 200);
-
-            } catch (Exception $e) {
-                if ($e->getMessage() === 'STREAM_MISSING_VIDEO') {
-                    Log::warning("Stream finalizado. Advertencia VOD: Stream ID {$streamId} sin video asociado para procesar.");
-                    return response('OK, VOD Warning', 200);
-                }
-
-                Log::error("Error VOD al finalizar stream automático (Stream Key: {$streamKey}): " . $e->getMessage());
-                return response('VOD Processing Failed', 500);
-            }
+            return response('OK', 200);
 
         } catch (ModelNotFoundException $e) {
-            Log::warning("Finalización automática fallida: Canal o Stream no encontrado para Stream Key [{$streamKey}].");
             return response('Not Found', 404);
         } catch (Exception $e) {
-            Log::error("Error general al finalizar stream automático (Stream Key: {$streamKey}): " . $e->getMessage());
+            Log::error("Error al finalizar stream: " . $e->getMessage());
             return response('Internal Server Error', 500);
+        }
+    }
+    public function procesarVod(Request $request)
+    {
+         Log::info('procesarVod recibido:', $request->all());
+         $streamKey = $request->input('name');
+         $path = $request->input('path');
+
+        if (!$streamKey) {
+            Log::error('procesarVod: No se recibió stream key.');
+            return response('Error: Stream Key Missing', 400);
+        }
+
+        try {
+            $canal = Canal::where('stream_key', $streamKey)->firstOrFail();
+
+            $stream = Stream::whereHas('video', function ($query) use ($canal) {
+                $query->where('canal_id', $canal->id);
+            })
+            ->with('video')
+            ->orderByDesc('id')
+            ->first();
+
+            if (!$stream) {
+                Log::warning("procesarVod: No se encontró stream para [{$streamKey}].");
+                return response('OK', 200);
+            }
+
+            $vodData = $this->subirVideoDeStream($stream->id, $path);
+
+            $host   = $this->obtenerHostMinio();
+            $bucket = $this->obtenerBucket();
+            $video  = $vodData['video'];
+            $rutaS3 = $vodData['rutaS3'];
+
+            Log::info("VOD procesado correctamente para Stream [{$stream->id}].");
+
+            return response()->json([
+                'message'       => 'VOD subido correctamente.',
+                'video_url'     => $this->obtenerUrlArchivo($rutaS3, $host, $bucket),
+                'miniatura_url' => $this->obtenerUrlArchivo($video->miniatura, $host, $bucket),
+                'video_id'      => $video->id,
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error("Error procesando VOD para [{$streamKey}]: " . $e->getMessage());
+            return response('VOD Error', 500);
         }
     }
 
@@ -1011,18 +1013,43 @@ class StreamController extends Controller
         return $stream;
     }
 
-    private function subirVideoDeStream($streamId): array
+    private function subirVideoDeStream($streamId, ?string $rutaFLVLocal = null): array
     {
+            Log::info("subirVideoDeStream llamado con streamId [{$streamId}] y path [{$rutaFLVLocal}]"); // 👈
+
         $stream = $this->obtenerStreamPorId($streamId);
 
-        if (! $stream->video) {
+        if (!$stream->video) {
             throw new Exception('STREAM_MISSING_VIDEO');
         }
 
-        $archivoFLV = $this->obtenerArchivoFLVDesdeMinio($stream);
-        $rutaMP4    = $this->convertirFLVaMP4($archivoFLV);
-        $rutaS3     = $this->subirVideoConvertidoAMinio($stream, $rutaMP4, $archivoFLV);
-        $video      = $this->finalizarRegistroDeVideo($stream, $rutaS3, $rutaMP4);
+        if ($rutaFLVLocal) {
+            $nombreArchivo = basename($rutaFLVLocal);
+            $archivoFLV = 'streams/' . $nombreArchivo;
+            Log::info("subirVideoDeStream: esperando archivo [{$archivoFLV}] en MinIO...");
+
+            $intentos = 0;
+            while (!Storage::disk('s3')->exists($archivoFLV) && $intentos < 12) {
+                sleep(5);
+                $intentos++;
+                Log::info("subirVideoDeStream: intento [{$intentos}] esperando [{$archivoFLV}]...");
+            }
+
+            if (!Storage::disk('s3')->exists($archivoFLV)) {
+                Log::error("subirVideoDeStream: archivo no apareció en MinIO tras 60s [{$archivoFLV}]");
+                throw new Exception("Archivo FLV no disponible en MinIO: {$archivoFLV}");
+            }
+
+            Log::info("subirVideoDeStream: archivo encontrado [{$archivoFLV}]");
+        } else {
+            $archivoFLV = $this->obtenerArchivoFLVDesdeMinio($stream);
+        }
+
+        Log::info("subirVideoDeStream: procesando archivo [{$archivoFLV}] para stream [{$streamId}]");
+
+        $rutaMP4 = $this->convertirFLVaMP4($archivoFLV);
+        $rutaS3  = $this->subirVideoConvertidoAMinio($stream, $rutaMP4, $archivoFLV);
+        $video   = $this->finalizarRegistroDeVideo($stream, $rutaS3, $rutaMP4);
 
         return [
             'rutaS3' => $rutaS3,
@@ -1039,7 +1066,7 @@ class StreamController extends Controller
         return $stream;
     }
 
-private function obtenerArchivoFLVDesdeMinio(Stream $stream): string
+    private function obtenerArchivoFLVDesdeMinio(Stream $stream): string
     {
         $directorio = 'streams';
         $canal      = optional(optional($stream->video)->canal);

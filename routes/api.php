@@ -96,6 +96,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/chat/mensajes/{streamId}', [ChatStreamController::class, 'obtenerMensajes']);
         Route::post('/iniciar', [StreamController::class, 'iniciarStream']);
         Route::post('/finalizar', [StreamController::class, 'finalizarStream']);
+        Route::post('/vod', [StreamController::class, 'procesarVod']);
 
     });
     Route::prefix('publicidad')->group(function () {

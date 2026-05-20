@@ -15,6 +15,7 @@ class Stream extends Model
         'max_viewers',
         'total_viewers',
         'activo',
+        'started_at',
     ];
     public function video()
     {

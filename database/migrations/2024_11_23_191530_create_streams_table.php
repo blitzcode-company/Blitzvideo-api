@@ -15,6 +15,7 @@ class CreateStreamsTable extends Migration
             $table->dateTime('stream_programado')->nullable();
             $table->unsignedBigInteger('max_viewers')->default(0);
             $table->unsignedBigInteger('total_viewers')->default(0);
+            $table->timestamp('started_at')->nullable();
             $table->boolean('activo')->default(false);
             $table->timestamps();
         });
