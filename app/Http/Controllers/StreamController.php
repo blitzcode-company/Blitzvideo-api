@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\ViewerStream;
+use App\Events\StreamStatusChanged;
 use App\Models\Canal;
 use App\Models\Stream;
 use App\Models\Video;
@@ -372,6 +373,18 @@ class StreamController extends Controller
 
             if ($video && $video->estado !== 'DIRECTO') {
                 $video->update(['estado' => 'DIRECTO']);
+
+                Log::info('Disparando broadcast StreamStatusChanged', [
+                'stream_id' => $streamActivo->id,
+                'canal_id' => $canal->id,
+                'estado' => 'DIRECTO'
+            ]);
+
+
+            broadcast(new StreamStatusChanged($streamActivo->id, $canal->id, 'DIRECTO'));
+            Log::info("Estado del Video ID [{$video->id}] actualizado a DIRECTO.");
+
+
                 Log::info("Estado del Video ID [{$video->id}] actualizado a DIRECTO por la conexión RTMP.");
             } elseif (! $video) {
                 Log::error("Stream activo [{$streamActivo->id}] sin registro de Video asociado. Publicación denegada.");
@@ -434,6 +447,9 @@ class StreamController extends Controller
             ]);
             
             $stream->update(['activo' => false]);
+
+            broadcast(new StreamStatusChanged($streamId, $canal->id, 'FINALIZADO'));
+
 
             try {
                 $vodData = $this->subirVideoDeStream($streamId);
