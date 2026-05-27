@@ -832,6 +832,7 @@ class StreamController extends Controller
                 'link'        => $transmision->video->link,
                 'miniatura'   => $transmision->video->miniatura,
                 'duracion'    => $transmision->video->duracion,
+                'estado'      => $transmision->video->estado,
                 'etiquetas'   => $transmision->video->etiquetas,
                 'created_at'  => $transmision->video->created_at,
             ],
