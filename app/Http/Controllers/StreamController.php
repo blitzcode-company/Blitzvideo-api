@@ -135,6 +135,9 @@ class StreamController extends Controller
             $this->actualizarMiniatura($request, $stream, $video);
         }
 
+        Log::info($request->all());
+Log::info(['miniatura' => $request->hasFile('miniatura')]);
+
         if ($request->has('etiquetas')) {
             $this->asignarEtiquetas($request, $video->id);
         }
@@ -969,19 +972,23 @@ class StreamController extends Controller
 
     private function actualizarMiniatura(Request $request, Stream $stream, Video $video)
     {
-        if (! $request->hasFile('miniatura')) {
+        if(!$request->hasFile('miniatura')) {
             return;
         }
-        $miniatura = $request->file('miniatura');
         if ($video->miniatura) {
-            $miniaturaNombre = basename($video->miniatura);
-        } else {
-            $miniaturaNombre = uniqid() . '.jpg';
+            Storage::disk('s3')->delete($video->miniatura);
         }
-        $folderPath       = "miniaturas/{$video->canal_id}";
-        $rutaMiniatura    = $miniatura->storeAs($folderPath, $miniaturaNombre, 's3');
-        $video->miniatura = $rutaMiniatura;
-        $video->save();
+        $miniatura = $request->file('miniatura');
+        $miniaturaNombre = uniqid() . '.' . $miniatura->getClientOriginalExtension();
+        $folderPath = "miniaturas/{$video->canal_id}";
+        $rutaMiniatura = $miniatura->storeAs(
+            $folderPath,
+            $miniaturaNombre,
+            's3'
+        );
+        $video->update([
+            'miniatura' => $rutaMiniatura
+        ]);
     }
 
     private function eliminarArchivoStream(Stream $stream)
