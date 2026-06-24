@@ -113,13 +113,23 @@ class VideoController extends Controller
             ->each(fn($video) => $video->promedio_puntuaciones = $video->puntuacion_promedio);
     }
 
-    public function mostrarInformacionVideo($idVideo)
+    public function mostrarInformacionVideo(Request $request, $idVideo)
     {
         $video = $this->obtenerVideoPorId($idVideo);
-        if ($video->bloqueado) {
-            return $this->respuestaError('El video está bloqueado y no se puede acceder.', 403);
+
+        if ($video->acceso === 'privado') {
+            $canalIdDelUsuario = $request->query('canal_id');
+            if (!$canalIdDelUsuario || (int)$canalIdDelUsuario !== (int)$video->canal_id) {
+                return $this->respuestaError('Este video es privado.', 403, 'privado');
+            }
         }
-        
+
+        if ($video->bloqueado) {
+            return $this->respuestaError('El video está bloqueado y no se puede acceder.', 403, 'bloqueado');
+        }
+
+  
+
         $this->ajustarRutasDeVideos($video);
         $video->promedio_puntuaciones = $video->puntuacion_promedio;
         return response()->json($video, 200);
@@ -132,11 +142,15 @@ class VideoController extends Controller
             ->findOrFail($idVideo);
     }
 
-    private function respuestaError($mensaje, $codigo)
+    private function respuestaError(string $mensaje, int $codigo, string $type = 'error')
     {
-        return response()->json(['error' => $mensaje, 'code' => $codigo], $codigo);
+        return response()->json([
+            'error' => $mensaje,
+            'code'  => $codigo,
+            'type'  => $type
+        ], $codigo);
     }
-
+    
     public function subirVideo(Request $request, $canalId)
     {
         $this->validarSubidaDeVideo($request);
