@@ -124,6 +124,8 @@ class CanalController extends Controller
                 'etiquetas:id,nombre',
             ])
             ->withCount($this->obtenerContadoresDePuntuaciones())
+            ->where('bloqueado', false)
+            ->where('acceso', 'publico')
             ->get();
     }
 
