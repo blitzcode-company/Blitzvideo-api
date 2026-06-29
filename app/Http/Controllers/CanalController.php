@@ -11,7 +11,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 
@@ -52,9 +52,11 @@ class CanalController extends Controller
         return $host . $bucket . $rutaRelativa;
     }
     
-    public function listarVideosDeCanal($canalId)
+    public function listarVideosDeCanal(Request $request, $canalId)
     {
-        $videos = $this->obtenerVideosConRelaciones($canalId);
+        $userId = $request->query('user_id');
+
+        $videos = $this->obtenerVideosConRelaciones($canalId, $userId);
         $host   = $this->obtenerHostMinio();
         $bucket = $this->obtenerBucket();
         $videos->each(function ($video) use ($host, $bucket) {
@@ -115,18 +117,38 @@ class CanalController extends Controller
         ];
     }
 
-    private function obtenerVideosConRelaciones($canalId)
+    private function obtenerVideosConRelaciones($canalId, $userId = null)
     {
-        return Video::where('canal_id', $canalId)
+        
+        $query = Video::where('canal_id', $canalId)
             ->with([
                 'canal:id,nombre,portada,descripcion,user_id',
                 'canal.user:id,name,foto,email',
                 'etiquetas:id,nombre',
             ])
             ->withCount($this->obtenerContadoresDePuntuaciones())
-            ->where('bloqueado', false)
-            ->where('acceso', 'publico')
-            ->get();
+            ->where('bloqueado', false);
+
+        $canal = Canal::select('user_id')->find($canalId);
+
+
+        $esPropietario = $canal && $canal->user_id == $userId;
+
+        if (!$esPropietario) {
+            $query->where('acceso', 'publico');
+        }
+
+      Log::info('Comprobando propietario', [
+        'canal_user_id' => $canal?->user_id,
+        'user_id_request' => $userId,
+        'esPropietario' => $esPropietario
+    ]);
+
+
+
+        return $query->get();
+
+    
     }
 
     private function obtenerContadoresDePuntuaciones()
@@ -204,26 +226,38 @@ class CanalController extends Controller
         }
     }
 
-
-
-
-
     public function editarCanal(Request $request, $canalId)
     {
         try {
             $datosValidados = $this->validarDatosDeEdicionDeCanal($request);
-            $canal          = Canal::findOrFail($canalId);
+
+            $userId = $request->input('user_id');
+
+            $canal = Canal::findOrFail($canalId);
+
+            if ($canal->user_id != $userId) {
+                return response()->json([
+                    'message' => 'No tienes permiso para editar este canal'
+                ], 403);
+            }
 
             $this->actualizarDatosCanal($canal, $datosValidados);
             $canal->save();
 
-            return response()->json(['message' => 'Canal actualizado correctamente', 'canal' => $canal], 200);
+            return response()->json([
+                'message' => 'Canal actualizado correctamente',
+                'canal' => $canal
+            ], 200);
+
         } catch (ModelNotFoundException $exception) {
-            return response()->json(['message' => 'Lo sentimos, tu canal no pudo ser encontrado'], 404);
+            return response()->json(['message' => 'Canal no encontrado'], 404);
         } catch (QueryException $exception) {
-            return response()->json(['message' => 'Ocurrió un error al actualizar tu canal, por favor inténtalo de nuevo más tarde'], 500);
+            return response()->json(['message' => 'Error al actualizar'], 500);
         } catch (\Illuminate\Validation\ValidationException $exception) {
-            return response()->json(['message' => 'Error de validación', 'errors' => $exception->errors()], 422);
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => $exception->errors()
+            ], 422);
         }
     }
 
